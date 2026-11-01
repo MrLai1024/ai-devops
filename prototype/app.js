@@ -234,6 +234,41 @@
     { id: 'C-203', requirementId: 'RQ-102', author: '李娜', time: '09:45', content: '异常类型需要支持人工维护，避免自动分派误判。' }
   ];
 
+  const REQUIREMENT_HISTORY = [
+    {
+      id: 'H-301', requirementId: 'RQ-101', actor: '张明', time: '10:18', action: '更新需求',
+      changes: [{ label: '优先级', before: 'P1', after: 'P0' }, { label: '验收标准', updated: true }]
+    },
+    {
+      id: 'H-302', requirementId: 'RQ-101', actor: '陈晨', time: '09:40', action: '更新需求',
+      changes: [{ label: '状态', before: '设计', after: '测试' }, { label: '责任人', before: '陈晨', after: '张明' }]
+    },
+    {
+      id: 'H-303', requirementId: 'RQ-101', actor: '张明', time: '09:12', action: '创建需求',
+      changes: [{ label: '初始状态', after: '分析' }, { label: '优先级', after: 'P1' }, { label: '关联应用', after: 'order-api、order-web' }]
+    },
+    {
+      id: 'H-304', requirementId: 'RQ-102', actor: '陈晨', time: '10:05', action: '更新需求',
+      changes: [{ label: '状态', before: '开发', after: '测试' }]
+    },
+    {
+      id: 'H-305', requirementId: 'RQ-102', actor: '陈晨', time: '09:30', action: '创建需求',
+      changes: [{ label: '初始状态', after: '分析' }, { label: '优先级', after: 'P1' }, { label: '关联应用', after: 'order-api' }]
+    },
+    {
+      id: 'H-306', requirementId: 'RQ-107', actor: '王磊', time: '10:22', action: '更新需求',
+      changes: [{ label: '状态', before: '分析', after: '设计' }, { label: '责任人', before: '张明', after: '王磊' }]
+    },
+    {
+      id: 'H-307', requirementId: 'RQ-107', actor: '王磊', time: '09:50', action: '创建需求',
+      changes: [{ label: '初始状态', after: '分析' }, { label: '关联应用', after: 'support-bot' }]
+    },
+    {
+      id: 'H-308', requirementId: 'RQ-104', actor: '陈晨', time: '09:40', action: '更新需求',
+      changes: [{ label: '状态', before: '分析', after: '设计' }, { label: '优先级', before: 'P1', after: 'P2' }]
+    }
+  ];
+
   const TASKS = [
     {
       id: 'T-201', title: '需求分析 · 订单履约超时预警', agent: '需求分析', type: '需求分析', projectId: 'p-order', requirementId: 'RQ-101', status: '待确认', progress: 100, started: '10:02', duration: '3m 12s', tokens: '12.4k', steps: 8, updated: '10:05',
@@ -899,6 +934,7 @@
     toastSeq: 0,
     auditSeq: 1100,
     commentSeq: 203,
+    historySeq: 308,
     reqSeq: 120,
     taskSeq: 210,
     pipelineSeq: 8830,
@@ -1478,14 +1514,57 @@
     </div>`;
   }
 
+  const REQUIREMENT_STATUS_TASKS = {
+    分析: { agent: '需求分析', type: '需求分析' },
+    设计: { agent: '方案设计', type: '方案设计' },
+    开发: { agent: 'Coding', type: '需求开发' },
+    测试: { agent: '测试生成', type: '测试生成' },
+    发布: { agent: '发布审批', type: '发布审批' }
+  };
+
+  function taskOwner(task) {
+    const requirement = task.requirementId ? requirementById(task.requirementId) : null;
+    if (requirement?.owner) return requirement.owner;
+    if (task.owner) return task.owner;
+    return projectById(task.projectId)?.owner || '—';
+  }
+
+  function createTaskFromRequirement(req, status) {
+    const mapping = REQUIREMENT_STATUS_TASKS[status];
+    if (!mapping) return null;
+    const time = nowTime();
+    const task = {
+      id: `T-${++state.taskSeq}`,
+      title: `${mapping.type} · ${req.title}`,
+      agent: mapping.agent,
+      type: mapping.type,
+      projectId: req.projectId,
+      requirementId: req.id,
+      owner: req.owner,
+      status: '排队中',
+      progress: 0,
+      started: '—',
+      duration: '—',
+      tokens: '0',
+      steps: 0,
+      updated: time,
+      summary: `需求 ${req.id} 状态变更为「${status}」，系统自动创建${mapping.type}任务，等待 Agent worker。`,
+      tools: [],
+      logs: `[${time}] task created by requirement status change\n[${time}] requirement ${req.id} → ${status}\n[${time}] waiting for agent worker`,
+      diff: null
+    };
+    TASKS.unshift(task);
+    req.taskId = task.id;
+    audit('自动创建 Agent 任务', task.id, '成功', { agent: mapping.agent, projectId: req.projectId, requirementId: req.id, trigger: `需求状态 → ${status}` });
+    return task;
+  }
+
   function taskBoardCard(task) {
-    const tone = task.status === '失败' || task.status === '已中止' ? 'danger' : task.status === '成功' ? 'soft' : ['待确认', '待审批', '待修改'].includes(task.status) ? 'warn' : '';
     return `<article class="kanban-card task-card" data-action="open-task-page" data-id="${task.id}" data-from="board" tabindex="0" role="button">
       <div class="task-card-top"><span class="task-type">${icon('bot', 11)} ${esc(task.type || task.agent)}</span>${pill(task.status)}</div>
       <b>${esc(task.title)}</b>
       <div class="task-card-agent">${icon('bot', 11)} ${esc(task.agent)}${task.requirementId ? ` · ${esc(task.requirementId)}` : ''}</div>
-      <div class="progress-label" style="margin-top:9px;"><span class="muted" style="font-size:9.5px;">进度</span><span>${task.progress}%</span></div>
-      <div style="margin-top:5px;">${progress(task.progress, tone)}</div>
+      <div class="task-card-owner">${icon('users', 11)}<span>责任人 ${esc(taskOwner(task))}</span></div>
       <div class="task-card-foot"><span>${esc(task.updated)}</span><span>${task.steps} steps · ${esc(task.tokens)} tokens</span></div>
     </article>`;
   }
@@ -1626,11 +1705,6 @@
         </div>
         <div class="task-head-actions">${headActions}</div>
       </header>
-      <div class="task-progress-strip">
-        <div class="task-progress-label"><span>执行进度</span><b>${task.progress}%</b></div>
-        <div class="task-progress-track"><span style="width:${pct(task.progress)}%"></span></div>
-        <span class="task-progress-note">${task.status === '运行中' ? 'Agent 正在执行' : esc(task.status)}</span>
-      </div>
       <div class="task-page-body">
         ${task._files.length ? `<details class="task-files-panel" open>
           <summary><span class="task-files-title">${icon('folder', 14)} 工作区文件</span><span class="tag">${task._files.length} 个</span><span class="muted">${task._files.filter((file) => file.status).length} 个变更</span><span class="task-files-hint">点击文件查看 Diff</span></summary>
@@ -2612,6 +2686,60 @@
       .sort((a, b) => String(b.time).localeCompare(String(a.time)));
   }
 
+  function requirementHistory(reqId) {
+    return REQUIREMENT_HISTORY.filter((entry) => entry.requirementId === reqId);
+  }
+
+  function addRequirementHistory(req, action, changes, actor = '张明') {
+    const entry = { id: `H-${++state.historySeq}`, requirementId: req.id, actor, time: nowTime(), action, changes };
+    REQUIREMENT_HISTORY.unshift(entry);
+    return entry;
+  }
+
+  function requirementEditChanges(before, after) {
+    const fields = [
+      { key: 'title', label: '标题' },
+      { key: 'status', label: '状态' },
+      { key: 'priority', label: '优先级' },
+      { key: 'owner', label: '责任人' },
+      { key: 'desc', label: '需求描述', updatedOnly: true },
+      { key: 'acceptance', label: '验收标准', updatedOnly: true }
+    ];
+    return fields
+      .filter((field) => before[field.key] !== after[field.key])
+      .map((field) => field.updatedOnly
+        ? { label: field.label, updated: true }
+        : { label: field.label, before: before[field.key], after: after[field.key] });
+  }
+
+  function historyText(value) {
+    const text = String(value ?? '');
+    return text.length > 60 ? `${text.slice(0, 60)}…` : text;
+  }
+
+  function renderRequirementHistory(reqId) {
+    const history = requirementHistory(reqId);
+    if (!history.length) return '<div class="empty-table">暂无变更记录</div>';
+    return `<div class="req-history-timeline">${history.map((entry, index) => {
+      const user = USERS.find((item) => item.name === entry.actor);
+      return `<div class="req-history-entry ${index === 0 ? 'latest' : ''}">
+        <div class="req-history-time">${esc(entry.time)}</div>
+        <div class="req-history-rail"><span class="req-history-dot"></span></div>
+        <div class="req-history-card">
+          <div class="req-history-head">${avatar(entry.actor, user?.color || '#2563eb', true)}<b>${esc(entry.actor)}</b><span class="req-history-action">${esc(entry.action)}</span></div>
+          <div class="req-history-changes">${(entry.changes || []).map((change) => {
+            const value = change.updated
+              ? '<span class="tag">已更新</span>'
+              : change.before
+                ? `<span class="req-history-before">${esc(historyText(change.before))}</span><span class="req-history-arrow">→</span><span class="req-history-after">${esc(historyText(change.after))}</span>`
+                : `<span class="req-history-after">${esc(historyText(change.after))}</span>`;
+            return `<div class="req-history-change"><span class="req-history-label">${esc(change.label)}</span>${value}</div>`;
+          }).join('')}</div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
   function renderRequirementComments(reqId) {
     const comments = requirementComments(reqId);
     if (!comments.length) return '<div class="empty-table">暂无评论，来补充第一条说明。</div>';
@@ -2644,6 +2772,7 @@
       <div class="tabs req-detail-tabs">
         <button class="tab active" type="button" data-action="req-detail-tab" data-tab="detail">详情</button>
         <button class="tab" type="button" data-action="req-detail-tab" data-tab="relations">关联项</button>
+        <button class="tab" type="button" data-action="req-detail-tab" data-tab="history">历史记录</button>
       </div>
       <div class="req-detail-pane" data-pane="detail">
         <div class="req-detail-grid">
@@ -2679,8 +2808,8 @@
             <div class="drawer-section-title">关联应用</div>
             <div class="relation-list">${appRelations.length ? appRelations.map((app) => `<button class="relation-item" type="button" data-action="open-app" data-id="${app.id}">
               <span class="relation-icon">${icon('cube', 15)}</span>
-              <span class="relation-copy"><b>${esc(app.name)}</b><small>prod ${esc(app.envs.prod.version)} · test ${esc(app.envs.test.version)}</small></span>
-              <span class="tag">${esc(app.envs.prod.status)}</span>
+              <span class="relation-copy"><b>${esc(app.name)}</b><small>prod ${esc(app.envs.prod?.version || '—')} · test ${esc(app.envs.test?.version || '—')}</small></span>
+              <span class="tag">${esc(app.envs.prod?.status || '仅 test')}</span>
             </button>`).join('') : '<div class="empty-table">暂无关联应用</div>'}</div>
           </div>
           <div class="drawer-section">
@@ -2690,8 +2819,14 @@
         </div>
         ${req.deferredTo ? `<div class="drawer-section"><div class="drawer-section-title">延期目标</div><div class="release-note"><b>已延期</b><br>目标：${esc(iterationById(req.deferredTo)?.name || 'backlog')}；不计入当前迭代发布。</div></div>` : ''}
       </div>
+      <div class="req-detail-pane" data-pane="history" hidden>
+        <div class="drawer-section">
+          <div class="drawer-section-title">变更记录</div>
+          ${renderRequirementHistory(req.id)}
+        </div>
+      </div>
     `;
-    const footer = `<button class="btn btn-outline" type="button" data-action="close-overlay">关闭</button>${req.ready ? `<button class="btn btn-primary" type="button" data-action="goto-releases">查看发布计划</button>` : !req.deferredTo ? `<button class="btn btn-danger" type="button" data-action="defer-req" data-id="${req.id}">延期需求</button>` : ''}`;
+    const footer = !req.ready && !req.deferredTo ? `<button class="btn btn-danger" type="button" data-action="defer-req" data-id="${req.id}">延期需求</button>` : '';
     const headerActions = `<button class="btn btn-primary btn-sm" type="button" data-action="save-req-edit" data-id="${req.id}">保存修改</button>`;
     openPanel({ title: `${req.id} · ${req.title}`, sub: '需求详情与关联信息', body, footer, extraWide: true, headerActions });
   }
@@ -2720,14 +2855,23 @@
       toast('没有需要保存的修改。', 'info');
       return;
     }
+    const statusChanged = status !== before.status;
     Object.assign(req, after, {
       updated: nowTime(),
       ready: !req.deferredTo && ['测试', '发布'].includes(status)
     });
+    const autoTask = statusChanged ? createTaskFromRequirement(req, status) : null;
+    const changes = requirementEditChanges(before, after);
+    if (autoTask) changes.push({ label: '自动任务', after: `${autoTask.id} · ${autoTask.type}` });
+    addRequirementHistory(req, '更新需求', changes);
     audit('更新需求', req.id, '成功', { before, after });
     renderMain();
     openRequirementDrawer(req.id);
-    toast(`${req.id} 已更新。`, 'success', '需求已更新');
+    toast(
+      autoTask ? `${req.id} 已更新，已自动创建 ${autoTask.id}（${autoTask.type}）。` : `${req.id} 已更新。`,
+      'success',
+      '需求已更新'
+    );
   }
 
   function switchRequirementDetailTab(tab) {
@@ -3853,6 +3997,11 @@
       owner: '张明', apps: [], updated: nowTime(), ready: false, desc: desc || '待补充需求描述。', acceptance, taskId: null
     };
     REQUIREMENTS.unshift(req);
+    addRequirementHistory(req, '创建需求', [
+      { label: '初始状态', after: '分析' },
+      { label: '优先级', after: priority },
+      { label: '所属迭代', after: iteration.name }
+    ]);
     audit('创建需求', req.id, '成功', { after: { title, iterationId, priority } });
     closeOverlay();
     state.projectId = projectId;
@@ -3874,6 +4023,10 @@
     req.ready = false;
     req.deferredTo = target;
     req.updated = nowTime();
+    addRequirementHistory(req, '延期需求', [
+      { label: '延期目标', after: target === 'backlog' ? 'Backlog' : (iterationById(target)?.name || target) },
+      ...(reason ? [{ label: '延期原因', after: reason }] : [])
+    ]);
     audit('延期需求', req.id, '成功', { reason, target });
     closeOverlay();
     renderMain();

@@ -74,6 +74,8 @@ try {
   const boardHeads = await evaluate(`Array.from(document.querySelectorAll('.task-kanban .kanban-head b')).map((el) => el.textContent.trim())`);
   check('task board columns are by status', JSON.stringify(boardHeads) === JSON.stringify(['排队中', '运行中', '待确认', '已完成', '失败']), boardHeads.join(','));
   check('task board has task cards', (await evaluate(`document.querySelectorAll('[data-action="open-task-page"]').length`)) >= 5);
+  check('task board cards hide progress bars', (await evaluate(`document.querySelectorAll('.task-card .progress, .task-card .progress-label').length === 0`)) === true);
+  check('task cards show responsible person', (await evaluate(`(() => { const card = document.querySelector('.task-card[data-id="T-201"]'); return !!card && card.textContent.includes('责任人') && card.textContent.includes('张明'); })()`)) === true);
   await sleep(250);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/task-board.png', Buffer.from(shot.data, 'base64')));
 
@@ -83,6 +85,7 @@ try {
   check('project shell stays visible on task detail', (await evaluate(`(() => { const shell = document.querySelector('#shell'); const sidebar = document.querySelector('#sidebar'); const main = document.querySelector('#main'); return !shell.classList.contains('no-sidebar') && !!sidebar && getComputedStyle(sidebar).display !== 'none' && sidebar.getBoundingClientRect().width > 0 && main.getBoundingClientRect().width < window.innerWidth; })()`)) === true);
   check('task detail renders inside requirements board tab', (await evaluate(`(() => { const activeTab = document.querySelector('.req-page .tabs .tab.active'); const nav = document.querySelector('.sidebar .side-item.active'); return !!activeTab && activeTab.textContent.includes('任务看板') && !!document.querySelector('.req-page .task-page') && !!nav && nav.textContent.includes('需求管理'); })()`)) === true);
   check('task header shows task info', (await evaluate(`document.querySelector('.task-page-title')?.textContent.includes('缺陷修复 · 订单导出超时') && document.querySelector('.task-page-badges')?.textContent.includes('缺陷修复') && document.querySelector('.task-page-badges')?.textContent.includes('运行中')`)) === true);
+  check('task detail hides progress bar', (await evaluate(`!document.querySelector('.task-progress-strip')`)) === true);
   check('workspace file tree rendered', (await evaluate(`document.querySelectorAll('.task-file-row').length`)) === 3);
   const initialEvents = await evaluate(`document.querySelectorAll('#task-agent-events > .task-event').length`);
   await sleep(5200);
@@ -150,6 +153,20 @@ try {
   await evaluate(`document.querySelector('.req-page [data-action="req-tab"][data-tab="list"]').click()`);
   await waitDom(`location.hash === '#/requirements' && !!document.querySelector('.req-table')`);
   check('switching requirements tab exits task detail', true);
+
+  await evaluate(`document.querySelector('[data-action="open-req"][data-id="RQ-102"]').click()`);
+  await waitDom(`!!document.querySelector('#req-edit-status')`);
+  await evaluate(`(() => { document.querySelector('#req-edit-status').value = '开发'; return true; })()`);
+  await evaluate(`document.querySelector('[data-action="save-req-edit"]').click()`);
+  await waitDom(`document.body.innerText.includes('已自动创建')`);
+  await evaluate(`document.querySelector('.overlay.open [data-action="close-overlay"]').click()`);
+  await sleep(250);
+  await evaluate(`document.querySelector('.req-page [data-action="req-tab"][data-tab="board"]').click()`);
+  await waitDom(`!!document.querySelector('.task-kanban')`);
+  const autoCard = await evaluate(`(() => { const card = Array.from(document.querySelectorAll('.task-card')).find((el) => el.textContent.includes('需求开发 · 异常单自动分派')); if (!card) return null; return { owner: card.textContent.includes('责任人 陈晨'), column: card.closest('.kanban-col')?.querySelector('.kanban-head b')?.textContent.trim() || '' }; })()`);
+  check('requirement status change auto-creates agent task', !!autoCard && autoCard.column === '排队中', JSON.stringify(autoCard));
+  check('auto-created task shows requirement owner', !!autoCard && autoCard.owner === true, JSON.stringify(autoCard));
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/task-board-auto.png', Buffer.from(shot.data, 'base64')));
 
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {

@@ -193,10 +193,12 @@ try {
       comments: root.querySelectorAll('.comment-item').length
     };
   })()`);
-  check('detail tabs are 详情/关联项', JSON.stringify(drawer.tabs) === JSON.stringify(['详情', '关联项']) && drawer.detailOpen && drawer.relationsClosed, JSON.stringify(drawer.tabs));
+  check('detail tabs are 详情/关联项/历史记录', JSON.stringify(drawer.tabs) === JSON.stringify(['详情', '关联项', '历史记录']) && drawer.detailOpen && drawer.relationsClosed, JSON.stringify(drawer.tabs));
   check('detail uses left/right layout', drawer.grid && drawer.left && drawer.right && drawer.headerSave, JSON.stringify(drawer));
   check('basic info and progress removed', !drawer.basicInfo && !drawer.progress);
   check('comment area seeded', drawer.comments === 2, String(drawer.comments));
+  const footerState = await evaluate(`(() => { const root = document.querySelector('.overlay.open .drawer'); const foot = root.querySelector('.drawer-foot'); return { hasFoot: !!foot, close: !!foot?.querySelector('[data-action="close-overlay"]'), release: !!foot?.querySelector('[data-action="goto-releases"]'), headerClose: !!root.querySelector('.drawer-close') }; })()`);
+  check('requirement drawer footer omits close and release actions', !footerState.hasFoot && !footerState.close && !footerState.release && footerState.headerClose, JSON.stringify(footerState));
 
   const relations = await evaluate(`(() => {
     const root = document.querySelector('.overlay.open .drawer');
@@ -207,6 +209,27 @@ try {
   check('relations tab shows apps and task', relations.detailHidden && relations.relationsVisible && relations.apps === 2 && relations.hasTask, JSON.stringify(relations));
   await sleep(300);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/requirement-relations.png', Buffer.from(shot.data, 'base64')));
+  const historyView = await evaluate(`(() => {
+    const root = document.querySelector('.overlay.open .drawer');
+    root.querySelector('[data-action="req-detail-tab"][data-tab="history"]').click();
+    const pane = root.querySelector('[data-pane="history"]');
+    const first = pane.querySelector('.req-history-entry');
+    return {
+      panelVisible: !pane.hidden,
+      detailHidden: root.querySelector('[data-pane="detail"]').hidden,
+      timeline: !!pane.querySelector('.req-history-timeline'),
+      count: pane.querySelectorAll('.req-history-entry').length,
+      rails: pane.querySelectorAll('.req-history-rail').length,
+      dots: pane.querySelectorAll('.req-history-dot').length,
+      actor: first?.querySelector('.req-history-head b')?.textContent.trim(),
+      time: first?.querySelector('.req-history-time')?.textContent.trim(),
+      action: first?.querySelector('.req-history-action')?.textContent.trim(),
+      text: pane.innerText
+    };
+  })()`);
+  check('history tab renders a timeline with operator, time and changes', historyView.panelVisible && historyView.detailHidden && historyView.timeline && historyView.count === 3 && historyView.rails === 3 && historyView.dots === 3 && historyView.actor === '张明' && historyView.time === '10:18' && historyView.action === '更新需求' && historyView.text.includes('优先级') && historyView.text.includes('P1') && historyView.text.includes('P0'), JSON.stringify(historyView));
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/requirement-history.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`document.querySelector('[data-action="req-detail-tab"][data-tab="detail"]').click()`);
   check('detail tab restores detail content', (await evaluate(`!document.querySelector('[data-pane="detail"]').hidden && !!document.querySelector('#req-edit-title') && !!document.querySelector('#req-comments')`)) === true);
 
@@ -230,6 +253,15 @@ try {
   check('title, status, priority and owner save', fieldsAfter.title === '订单履约超时预警（已编辑）' && fieldsAfter.status === '开发' && fieldsAfter.priority === 'P1' && fieldsAfter.owner === '陈晨', JSON.stringify(fieldsAfter));
   check('description and acceptance save', fieldsAfter.desc === editedDesc && fieldsAfter.acceptance === editedAcceptance);
   check('edit save shows success', (await evaluate(`document.body.innerText.includes('需求已更新')`)) === true);
+  const savedHistory = await evaluate(`(() => {
+    const root = document.querySelector('.overlay.open .drawer');
+    root.querySelector('[data-action="req-detail-tab"][data-tab="history"]').click();
+    const pane = root.querySelector('[data-pane="history"]');
+    const first = pane.querySelector('.req-history-entry');
+    return { count: pane.querySelectorAll('.req-history-entry').length, actor: first?.querySelector('.req-history-head b')?.textContent.trim(), action: first?.querySelector('.req-history-action')?.textContent.trim(), text: pane.innerText };
+  })()`);
+  check('saving a requirement appends history', savedHistory.count === 4 && savedHistory.actor === '张明' && savedHistory.action === '更新需求' && savedHistory.text.includes('状态') && savedHistory.text.includes('测试') && savedHistory.text.includes('开发') && savedHistory.text.includes('自动任务'), JSON.stringify(savedHistory));
+  await evaluate(`document.querySelector('[data-action="req-detail-tab"][data-tab="detail"]').click()`);
 
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/requirement-filters.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`document.querySelector('[data-action="close-overlay"]').click()`);
@@ -264,8 +296,13 @@ try {
   await waitDom(`document.querySelector('.req-table tbody tr[data-id="RQ-107"]')?.textContent.includes('已延期')`);
   const deferredState = await evaluate(`(() => { const row = document.querySelector('.req-table tbody tr[data-id="RQ-107"]'); return { status: row.querySelector('td:nth-child(3) .pill')?.textContent.trim(), tag: row.textContent.includes('已延期'), deferButton: !!row.querySelector('[data-action="defer-req"]') }; })()`);
   check('defer keeps five-stage status', deferredState.status === '设计' && deferredState.tag && !deferredState.deferButton, JSON.stringify(deferredState));
+  await evaluate(`document.querySelector('.req-table tbody tr[data-id="RQ-107"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open .drawer')`);
+  const deferHistory = await evaluate(`(() => { const root = document.querySelector('.overlay.open .drawer'); root.querySelector('[data-action="req-detail-tab"][data-tab="history"]').click(); return root.querySelector('[data-pane="history"]')?.innerText || ''; })()`);
+  check('defer action appends history', deferHistory.includes('延期需求') && deferHistory.includes('Backlog') && deferHistory.includes('依赖知识库索引改造'), deferHistory.slice(0, 80));
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {
+  if (errors.length) console.log(`CONSOLE ERRORS: ${errors.join(' | ')}`);
   check('test harness completed', false, error.stack || String(error));
 } finally {
   try { await send('Browser.close'); } catch { /* noop */ }
