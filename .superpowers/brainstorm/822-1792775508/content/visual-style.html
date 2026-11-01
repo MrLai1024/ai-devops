@@ -1,0 +1,202 @@
+<h2>整体视觉风格选哪套？</h2>
+<p class="subtitle">三套都是浅色方案，不使用黑色背景。布局参考 Dify 的清晰信息层级，色彩参考 Coze 的轻盈感。</p>
+
+<div class="cards">
+  <!-- A. Dify style -->
+  <div class="card" data-choice="dify" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:12px;background:#eef2f7;min-height:270px;">
+      <div style="height:246px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;display:flex;box-shadow:0 8px 24px rgba(15,23,42,.06);">
+        <div style="width:23%;background:#ffffff;border-right:1px solid #e5e7eb;padding:10px 8px;font-size:8px;color:#64748b;">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:12px;">
+            <div style="width:14px;height:14px;border-radius:4px;background:#2563eb;"></div>
+            <b style="font-size:10px;color:#1e293b;">AI DevOps</b>
+          </div>
+          <div style="background:#eff6ff;color:#1d4ed8;border-radius:5px;padding:5px 6px;margin-bottom:3px;font-weight:600;">项目总览</div>
+          <div style="padding:5px 6px;">需求与迭代</div>
+          <div style="padding:5px 6px;">Agent 任务</div>
+          <div style="padding:5px 6px;">流水线</div>
+          <div style="padding:5px 6px;">批次发布</div>
+          <div style="padding:5px 6px;">能力配置</div>
+          <div style="padding:5px 6px;">可观测</div>
+          <div style="padding:5px 6px;">审计</div>
+        </div>
+        <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#1e293b;">项目总览</div>
+              <div style="font-size:7px;color:#94a3b8;">最近 7 天交付概览</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:5px;">
+              <div style="width:52px;height:16px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;"></div>
+              <div style="width:54px;height:16px;border-radius:5px;background:#2563eb;color:#fff;font-size:7px;display:flex;align-items:center;justify-content:center;">新建需求</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:7px;"><div style="font-size:7px;color:#94a3b8;">活跃项目</div><div style="font-size:15px;font-weight:700;color:#1e293b;">12</div></div>
+            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:7px;"><div style="font-size:7px;color:#94a3b8;">进行中迭代</div><div style="font-size:15px;font-weight:700;color:#1e293b;">5</div></div>
+            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:7px;"><div style="font-size:7px;color:#94a3b8;">Agent 任务</div><div style="font-size:15px;font-weight:700;color:#1e293b;">28</div></div>
+            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:7px;"><div style="font-size:7px;color:#94a3b8;">本周发布</div><div style="font-size:15px;font-weight:700;color:#1e293b;">9</div></div>
+          </div>
+          <div style="display:flex;gap:7px;flex:1;min-height:0;">
+            <div style="flex:1.5;background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:8px;min-width:0;">
+              <div style="font-size:7px;color:#64748b;margin-bottom:7px;">交付趋势</div>
+              <div style="display:flex;align-items:flex-end;gap:4px;height:58px;">
+                <div style="width:10%;height:35%;background:#bfdbfe;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:52%;background:#bfdbfe;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:44%;background:#bfdbfe;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:68%;background:#60a5fa;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:58%;background:#60a5fa;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:80%;background:#2563eb;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:64%;background:#2563eb;border-radius:3px 3px 0 0;"></div>
+              </div>
+            </div>
+            <div style="flex:1;background:#fff;border:1px solid #e5e7eb;border-radius:7px;padding:8px;min-width:0;">
+              <div style="font-size:7px;color:#64748b;margin-bottom:6px;">待处理</div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="width:5px;height:5px;border-radius:50%;background:#f59e0b;"></span><span style="font-size:7px;color:#334155;">需求分析待确认</span></div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="width:5px;height:5px;border-radius:50%;background:#2563eb;"></span><span style="font-size:7px;color:#334155;">迭代 v2.4 待审批</span></div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="width:5px;height:5px;border-radius:50%;background:#ef4444;"></span><span style="font-size:7px;color:#334155;">发布项 portal 失败</span></div>
+              <div style="display:flex;align-items:center;gap:5px;"><span style="width:5px;height:5px;border-radius:50%;background:#10b981;"></span><span style="font-size:7px;color:#334155;">MCP 能力待测试</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Dify 风格 · 清晰克制</h3>
+      <p>白色侧栏、浅灰画布、蓝色主色、8px 圆角。信息密度高，像成熟的开发者工具，最稳重。</p>
+    </div>
+  </div>
+
+  <!-- B. Coze style -->
+  <div class="card" data-choice="coze" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:12px;background:#f4f1fb;min-height:270px;">
+      <div style="height:246px;background:#fbfaff;border:1px solid #ede9fe;border-radius:16px;overflow:hidden;display:flex;box-shadow:0 8px 24px rgba(99,102,241,.10);">
+        <div style="width:23%;background:#ffffff;border-right:1px solid #f1eafe;padding:10px 8px;font-size:8px;color:#7c7a8e;">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:12px;">
+            <div style="width:14px;height:14px;border-radius:5px;background:linear-gradient(135deg,#6366f1,#a855f7);"></div>
+            <b style="font-size:10px;color:#312e4a;">AI DevOps</b>
+          </div>
+          <div style="background:#f3e8ff;color:#7c3aed;border-radius:8px;padding:5px 6px;margin-bottom:3px;font-weight:600;">项目总览</div>
+          <div style="padding:5px 6px;">需求与迭代</div>
+          <div style="padding:5px 6px;">Agent 任务</div>
+          <div style="padding:5px 6px;">流水线</div>
+          <div style="padding:5px 6px;">批次发布</div>
+          <div style="padding:5px 6px;">能力配置</div>
+          <div style="padding:5px 6px;">可观测</div>
+          <div style="padding:5px 6px;">审计</div>
+        </div>
+        <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#312e4a;">项目总览</div>
+              <div style="font-size:7px;color:#a1a0b2;">最近 7 天交付概览</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:5px;">
+              <div style="width:52px;height:16px;border:1px solid #ede9fe;border-radius:8px;background:#fff;"></div>
+              <div style="width:54px;height:16px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;font-size:7px;display:flex;align-items:center;justify-content:center;">新建需求</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:linear-gradient(135deg,#eef2ff,#faf5ff);border:1px solid #ede9fe;border-radius:10px;padding:7px;"><div style="font-size:7px;color:#8b8aa0;">活跃项目</div><div style="font-size:15px;font-weight:700;color:#4c1d95;">12</div></div>
+            <div style="background:linear-gradient(135deg,#f0fdfa,#ecfeff);border:1px solid #ccfbf1;border-radius:10px;padding:7px;"><div style="font-size:7px;color:#8b8aa0;">进行中迭代</div><div style="font-size:15px;font-weight:700;color:#115e59;">5</div></div>
+            <div style="background:linear-gradient(135deg,#fff7ed,#fefce8);border:1px solid #fed7aa;border-radius:10px;padding:7px;"><div style="font-size:7px;color:#8b8aa0;">Agent 任务</div><div style="font-size:15px;font-weight:700;color:#9a3412;">28</div></div>
+            <div style="background:linear-gradient(135deg,#fdf2f8,#faf5ff);border:1px solid #fbcfe8;border-radius:10px;padding:7px;"><div style="font-size:7px;color:#8b8aa0;">本周发布</div><div style="font-size:15px;font-weight:700;color:#9d174d;">9</div></div>
+          </div>
+          <div style="display:flex;gap:7px;flex:1;min-height:0;">
+            <div style="flex:1.5;background:#fff;border:1px solid #f1eafe;border-radius:10px;padding:8px;min-width:0;">
+              <div style="font-size:7px;color:#7c7a8e;margin-bottom:7px;">交付趋势</div>
+              <div style="display:flex;align-items:flex-end;gap:4px;height:58px;">
+                <div style="width:10%;height:35%;background:#ddd6fe;border-radius:5px 5px 0 0;"></div>
+                <div style="width:10%;height:52%;background:#c4b5fd;border-radius:5px 5px 0 0;"></div>
+                <div style="width:10%;height:44%;background:#a78bfa;border-radius:5px 5px 0 0;"></div>
+                <div style="width:10%;height:68%;background:#8b5cf6;border-radius:5px 5px 0 0;"></div>
+                <div style="width:10%;height:58%;background:#7c3aed;border-radius:5px 5px 0 0;"></div>
+                <div style="width:10%;height:80%;background:#6d28d9;border-radius:5px 5px 0 0;"></div>
+                <div style="width:10%;height:64%;background:#5b21b6;border-radius:5px 5px 0 0;"></div>
+              </div>
+            </div>
+            <div style="flex:1;background:#fff;border:1px solid #f1eafe;border-radius:10px;padding:8px;min-width:0;">
+              <div style="font-size:7px;color:#7c7a8e;margin-bottom:6px;">待处理</div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 3px;font-size:6px;">待确认</span><span style="font-size:7px;color:#4c4a5e;">需求分析</span></div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="background:#ede9fe;color:#6d28d9;border-radius:4px;padding:1px 3px;font-size:6px;">待审批</span><span style="font-size:7px;color:#4c4a5e;">迭代 v2.4</span></div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 3px;font-size:6px;">失败</span><span style="font-size:7px;color:#4c4a5e;">发布项 portal</span></div>
+              <div style="display:flex;align-items:center;gap:5px;"><span style="background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 3px;font-size:6px;">测试</span><span style="font-size:7px;color:#4c4a5e;">MCP 能力</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Coze 风格 · 轻盈活力</h3>
+      <p>白色侧栏、浅紫画布、蓝紫渐变、14–16px 大圆角。更偏向 AI 产品，视觉更活泼。</p>
+    </div>
+  </div>
+
+  <!-- C. Hybrid -->
+  <div class="card" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:12px;background:#eaf3f8;min-height:270px;">
+      <div style="height:246px;background:#f7fafc;border:1px solid #dbeafe;border-radius:14px;overflow:hidden;display:flex;box-shadow:0 10px 30px rgba(37,99,235,.10);">
+        <div style="width:23%;background:#ffffff;border-right:1px solid #e2e8f0;padding:10px 8px;font-size:8px;color:#64748b;">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:12px;">
+            <div style="width:14px;height:14px;border-radius:5px;background:linear-gradient(135deg,#2563eb,#06b6d4);"></div>
+            <b style="font-size:10px;color:#1e293b;">AI DevOps</b>
+          </div>
+          <div style="background:linear-gradient(90deg,#e0f2fe,#ecfeff);color:#0369a1;border-radius:7px;padding:5px 6px;margin-bottom:3px;font-weight:600;">项目总览</div>
+          <div style="padding:5px 6px;">需求与迭代</div>
+          <div style="padding:5px 6px;">Agent 任务</div>
+          <div style="padding:5px 6px;">流水线</div>
+          <div style="padding:5px 6px;">批次发布</div>
+          <div style="padding:5px 6px;">能力配置</div>
+          <div style="padding:5px 6px;">可观测</div>
+          <div style="padding:5px 6px;">审计</div>
+        </div>
+        <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#1e293b;">项目总览</div>
+              <div style="font-size:7px;color:#94a3b8;">最近 7 天交付概览</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:5px;">
+              <div style="width:52px;height:16px;border:1px solid #dbeafe;border-radius:6px;background:#fff;"></div>
+              <div style="width:54px;height:16px;border-radius:6px;background:linear-gradient(135deg,#2563eb,#06b6d4);color:#fff;font-size:7px;display:flex;align-items:center;justify-content:center;">新建需求</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:7px;"><div style="font-size:7px;color:#94a3b8;">活跃项目</div><div style="font-size:15px;font-weight:700;color:#1e293b;">12</div></div>
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:7px;"><div style="font-size:7px;color:#94a3b8;">进行中迭代</div><div style="font-size:15px;font-weight:700;color:#1e293b;">5</div></div>
+            <div style="background:linear-gradient(135deg,#eff6ff,#ecfeff);border:1px solid #bfdbfe;border-radius:8px;padding:7px;"><div style="font-size:7px;color:#0369a1;">Agent 任务</div><div style="font-size:15px;font-weight:700;color:#075985;">28</div></div>
+            <div style="background:linear-gradient(135deg,#f0fdfa,#ecfeff);border:1px solid #99f6e4;border-radius:8px;padding:7px;"><div style="font-size:7px;color:#0f766e;">本周发布</div><div style="font-size:15px;font-weight:700;color:#115e59;">9</div></div>
+          </div>
+          <div style="display:flex;gap:7px;flex:1;min-height:0;">
+            <div style="flex:1.5;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px;min-width:0;">
+              <div style="font-size:7px;color:#64748b;margin-bottom:7px;">交付趋势</div>
+              <div style="display:flex;align-items:flex-end;gap:4px;height:58px;">
+                <div style="width:10%;height:35%;background:#bae6fd;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:52%;background:#7dd3fc;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:44%;background:#38bdf8;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:68%;background:#0ea5e9;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:58%;background:#0284c7;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:80%;background:#2563eb;border-radius:3px 3px 0 0;"></div>
+                <div style="width:10%;height:64%;background:#1d4ed8;border-radius:3px 3px 0 0;"></div>
+              </div>
+            </div>
+            <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px;min-width:0;">
+              <div style="font-size:7px;color:#64748b;margin-bottom:6px;">待处理</div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 3px;font-size:6px;">待确认</span><span style="font-size:7px;color:#334155;">需求分析</span></div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="background:#e0f2fe;color:#0369a1;border-radius:4px;padding:1px 3px;font-size:6px;">待审批</span><span style="font-size:7px;color:#334155;">迭代 v2.4</span></div>
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;"><span style="background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 3px;font-size:6px;">失败</span><span style="font-size:7px;color:#334155;">发布项 portal</span></div>
+              <div style="display:flex;align-items:center;gap:5px;"><span style="background:#dcfce7;color:#15803d;border-radius:4px;padding:1px 3px;font-size:6px;">测试</span><span style="font-size:7px;color:#334155;">MCP 能力</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 混合风格 · 专业但不沉闷</h3>
+      <p>Dify 的清晰布局 + Coze 的轻盈渐变；白/浅蓝画布、蓝青强调色、10–12px 圆角，适合长期使用的内部平台。</p>
+      <p class="label">推荐</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px;">三套都没有黑色背景。选好后在终端告诉我；下一屏我会把 B 方案的完整页面结构展开。</p>
