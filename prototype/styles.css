@@ -1455,6 +1455,14 @@ tr.row-click { cursor: pointer; }
 .release-req-main b { font-family: var(--mono); font-size: 10px; color: #0369a1; }
 .release-req-main span { font-size: 11px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .release-req-meta { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; font-size: 10px; color: #8da0b5; }
+.release-cell { display: flex; flex-direction: column; min-width: 0; }
+.release-select-wrap { position: relative; height: 28px; min-width: 0; border: 1px solid var(--border); border-radius: 7px; background: #fff; }
+.release-select-wrap:focus-within { border-color: #7dd3fc; box-shadow: 0 0 0 3px rgba(14, 163, 233, .11); }
+.release-select-display { display: block; max-width: 180px; height: 26px; padding: 0 20px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 26px; font-size: 10.5px; color: #475569; pointer-events: none; }
+.release-select-wrap.unset .release-select-display { color: #94a3b8; }
+.release-select-chevron { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); font-size: 8px; color: #94a3b8; pointer-events: none; }
+.req-release-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; font-size: 10.5px; cursor: pointer; }
+.req-release-select:focus { outline: none; }
 
 /* ---------------- Agent task detail ---------------- */
 

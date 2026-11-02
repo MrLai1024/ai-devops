@@ -863,8 +863,8 @@
 
   const RELEASES = [
     { id: 'REL-101', name: 'v2.4 灰度发布', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-24T09:00', endAt: '2026-10-24T12:00', requirementIds: ['RQ-101', 'RQ-102'], createdBy: '张明', createdAt: '2026-10-23 18:20' },
-    { id: 'REL-102', name: 'v2.4 正式发布', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-24T20:00', endAt: '2026-10-24T23:00', requirementIds: ['RQ-101', 'RQ-102', 'RQ-103', 'RQ-111'], createdBy: '张明', createdAt: '2026-10-24 09:10' },
-    { id: 'REL-103', name: 'v2.4 预发布验证', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-23T20:00', endAt: '2026-10-23T22:00', requirementIds: ['RQ-103', 'RQ-112'], createdBy: '陈晨', createdAt: '2026-10-23 15:30' }
+    { id: 'REL-102', name: 'v2.4 正式发布', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-24T20:00', endAt: '2026-10-24T23:00', requirementIds: ['RQ-103', 'RQ-111'], createdBy: '张明', createdAt: '2026-10-24 09:10' },
+    { id: 'REL-103', name: 'v2.4 预发布验证', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-23T20:00', endAt: '2026-10-23T22:00', requirementIds: ['RQ-112', 'RQ-113'], createdBy: '陈晨', createdAt: '2026-10-23 15:30' }
   ];
   const DEMO_NOW = '2026-10-24T10:30';
 
@@ -908,14 +908,8 @@
     return String(value || '').replace('T', ' ');
   }
 
-  function compactDateTime(value) {
-    const [date, time] = String(value || '').split('T');
-    return `${date.slice(5)} ${time || ''}`.trim();
-  }
-
-  function releaseWindow(release, compact = false) {
-    const format = compact ? compactDateTime : formatDateTime;
-    return `${format(release.startAt)} → ${format(release.endAt)}`;
+  function releaseWindow(release) {
+    return `${formatDateTime(release.startAt)} ~ ${formatDateTime(release.endAt)}`;
   }
 
   function releaseRequirementSummary(release) {
@@ -958,6 +952,7 @@
     reqPriorityFilter: 'all',
     reqOwnerFilter: 'all',
     reqAppFilter: 'all',
+    reqReleaseFilter: 'all',
     reqUpdatedFilter: '',
     taskFilter: 'all',
     pipelineFilter: 'all',
@@ -1012,6 +1007,7 @@
   const projectTasks = (projectId) => TASKS.filter((item) => item.projectId === projectId);
   const releaseById = (id) => RELEASES.find((item) => item.id === id);
   const iterationReleases = (iterationId) => RELEASES.filter((item) => item.iterationId === iterationId);
+  const requirementRelease = (reqId) => RELEASES.find((release) => (release.requirementIds || []).includes(reqId)) || null;
   const projectApps = (projectId) => APPS.filter((item) => item.projectId === projectId);
   const projectPipelines = (projectId) => PIPELINES.filter((item) => item.projectId === projectId);
   const projectRepos = (projectId) => REPOS.filter((item) => item.projectId === projectId);
@@ -1028,6 +1024,7 @@
     state.reqPriorityFilter = 'all';
     state.reqOwnerFilter = 'all';
     state.reqAppFilter = 'all';
+    state.reqReleaseFilter = 'all';
     state.reqUpdatedFilter = '';
   }
 
@@ -1048,7 +1045,8 @@
     '#/members': { module: 'projects', page: 'members', sidebar: 'project', title: '团队管理' },
     '#/requirements': { module: 'projects', page: 'requirements', sidebar: 'project', title: '需求管理' },
     '#/agents': { module: 'projects', page: 'agents', sidebar: 'project', title: 'Agent 任务' },
-    '#/code': { module: 'projects', page: 'code', sidebar: 'project', title: '代码与文档' },
+    '#/code': { module: 'projects', page: 'code', sidebar: 'project', title: '代码仓' },
+    '#/knowledge': { module: 'projects', page: 'knowledge', sidebar: 'project', title: '知识库' },
     '#/pipelines': { module: 'projects', page: 'pipelines', sidebar: 'project', title: '流水线' },
     '#/releases': { module: 'projects', page: 'releases', sidebar: 'project', title: '批次发布' },
     '#/runtime': { module: 'projects', page: 'runtime', sidebar: 'project', title: '应用运行' },
@@ -1125,7 +1123,8 @@
       { page: 'projects', label: '项目总览', icon: 'grid', route: '#/projects' },
       { page: 'requirements', label: '需求管理', icon: 'layers', route: '#/requirements' },
       { page: 'agents', label: 'Agent 任务', icon: 'bot', route: '#/agents' },
-      { page: 'code', label: '代码与文档', icon: 'code', route: '#/code' },
+      { page: 'code', label: '代码仓', icon: 'code', route: '#/code' },
+      { page: 'knowledge', label: '知识库', icon: 'file', route: '#/knowledge' },
       { page: 'pipelines', label: '流水线', icon: 'pipe', route: '#/pipelines' },
       { page: 'releases', label: '批次发布', icon: 'rocket', route: '#/releases' },
       { page: 'runtime', label: '应用运行', icon: 'server', route: '#/runtime' },
@@ -1237,6 +1236,7 @@
       case 'requirements': return renderRequirements();
       case 'agents': return renderAgents();
       case 'code': return renderCode();
+      case 'knowledge': return renderKnowledge();
       case 'pipelines': return renderPipelines();
       case 'releases': return renderReleases();
       case 'runtime': return renderRuntime();
@@ -1442,11 +1442,14 @@
       const matchesPriority = state.reqPriorityFilter === 'all' || item.priority === state.reqPriorityFilter;
       const matchesOwner = state.reqOwnerFilter === 'all' || item.owner === state.reqOwnerFilter;
       const matchesApp = state.reqAppFilter === 'all' || (item.apps || []).includes(state.reqAppFilter);
+      const linkedRelease = requirementRelease(item.id);
+      const matchesRelease = state.reqReleaseFilter === 'all' || (state.reqReleaseFilter === 'none' ? !linkedRelease : linkedRelease?.id === state.reqReleaseFilter);
       const matchesUpdated = !updatedQuery || String(item.updated).toLowerCase().includes(updatedQuery);
-      return matchesId && matchesTitle && matchesStatus && matchesPriority && matchesOwner && matchesApp && matchesUpdated;
+      return matchesId && matchesTitle && matchesStatus && matchesPriority && matchesOwner && matchesApp && matchesRelease && matchesUpdated;
     });
     const ownerOptions = [...new Set(allReqs.map((item) => item.owner))];
     const appOptions = [...new Set(allReqs.flatMap((item) => item.apps || []))];
+    const releaseOptions = iterationReleases(iteration.id);
     const activeTab = taskId ? 'board' : state.reqTab;
     const tabs = [
       { id: 'list', label: '需求列表' },
@@ -1458,12 +1461,12 @@
         <div class="tabs">
           ${tabs.map((tab) => `<button class="tab ${activeTab === tab.id ? 'active' : ''}" type="button" data-action="req-tab" data-tab="${tab.id}">${tab.label}${tab.id === 'list' ? `<span class="tab-count">${stats.total}</span>` : ''}</button>`).join('')}
         </div>
-        ${taskId ? renderTaskDetail(taskId) : activeTab === 'list' ? requirementListView(reqs, ownerOptions, appOptions) : activeTab === 'board' ? agentTaskBoardView() : releaseManagementView(iteration)}
+        ${taskId ? renderTaskDetail(taskId) : activeTab === 'list' ? requirementListView(reqs, ownerOptions, appOptions, releaseOptions) : activeTab === 'board' ? agentTaskBoardView() : releaseManagementView(iteration)}
       </div>
     `;
   }
 
-  function requirementListView(reqs, owners, apps) {
+  function requirementListView(reqs, owners, apps, releases) {
     const statusOptions = [['all', '全部'], ['分析', '分析'], ['设计', '设计'], ['开发', '开发'], ['测试', '测试'], ['发布', '发布']];
     const priorityOptions = [['all', '全部'], ['P0', 'P0'], ['P1', 'P1'], ['P2', 'P2'], ['P3', 'P3']];
     const pageSize = 10;
@@ -1479,9 +1482,9 @@
         </div>
         <div class="table-wrap req-table-wrap">
           <table class="req-table">
-            <colgroup><col style="width:96px"><col><col style="width:112px"><col style="width:106px"><col style="width:112px"><col style="width:140px"><col style="width:96px"><col style="width:58px"></colgroup>
+            <colgroup><col style="width:96px"><col><col style="width:112px"><col style="width:106px"><col style="width:112px"><col style="width:140px"><col style="width:200px"><col style="width:96px"><col style="width:58px"></colgroup>
             <thead>
-              <tr><th>需求编号</th><th>需求标题</th><th>状态</th><th>优先级</th><th>责任人</th><th>应用</th><th>更新</th><th></th></tr>
+              <tr><th>需求编号</th><th>需求标题</th><th>状态</th><th>优先级</th><th>责任人</th><th>应用</th><th>发布</th><th>更新</th><th></th></tr>
               <tr class="req-filter-row">
                 <th><input id="req-id-filter" class="input" type="search" value="${esc(state.reqIdFilter)}" placeholder="编号" autocomplete="off" aria-label="按需求编号筛选"></th>
                 <th><input id="req-title-filter" class="input" type="search" value="${esc(state.reqTitleFilter)}" placeholder="输入标题查询" autocomplete="off" aria-label="按需求标题筛选"></th>
@@ -1489,21 +1492,27 @@
                 <th><select id="req-priority-filter" class="select" data-action="req-priority-filter" aria-label="按优先级筛选">${priorityOptions.map(([value, label]) => `<option value="${value}" ${state.reqPriorityFilter === value ? 'selected' : ''}>${label}</option>`).join('')}</select></th>
                 <th><select id="req-owner-filter" class="select" data-action="req-owner-filter" aria-label="按责任人筛选"><option value="all">全部</option>${owners.map((owner) => `<option value="${esc(owner)}" ${state.reqOwnerFilter === owner ? 'selected' : ''}>${esc(owner)}</option>`).join('')}</select></th>
                 <th><select id="req-app-filter" class="select" data-action="req-app-filter" aria-label="按应用筛选"><option value="all">全部</option>${apps.map((app) => `<option value="${esc(app)}" ${state.reqAppFilter === app ? 'selected' : ''}>${esc(app)}</option>`).join('')}</select></th>
+                <th><select id="req-release-filter" class="select" data-action="req-release-filter" aria-label="按发布筛选"><option value="all" ${state.reqReleaseFilter === 'all' ? 'selected' : ''}>全部</option><option value="none" ${state.reqReleaseFilter === 'none' ? 'selected' : ''}>未关联</option>${releases.map((release) => `<option value="${release.id}" ${state.reqReleaseFilter === release.id ? 'selected' : ''}>${esc(release.name)}</option>`).join('')}</select></th>
                 <th><input id="req-updated-filter" class="input" type="search" value="${esc(state.reqUpdatedFilter)}" placeholder="更新时间" autocomplete="off" aria-label="按更新时间筛选"></th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              ${pageReqs.length ? pageReqs.map((item) => `<tr class="row-click" data-action="open-req" data-id="${item.id}" tabindex="0">
+              ${pageReqs.length ? pageReqs.map((item) => {
+                const linkedRelease = requirementRelease(item.id);
+                const releaseDisplay = linkedRelease ? `${linkedRelease.name} (${releaseWindow(linkedRelease)})` : '未关联';
+                return `<tr class="row-click" data-action="open-req" data-id="${item.id}" tabindex="0">
                 <td><span class="cell-id">${esc(item.id)}</span></td>
                 <td><div class="cell-main"><b>${esc(item.title)}</b>${item.deferredTo ? `<small>延期至 ${esc(item.deferredTo === 'backlog' ? 'Backlog' : iterationById(item.deferredTo)?.version || item.deferredTo)}</small>` : ''}</div></td>
                 <td><div class="flex" style="gap:5px;flex-wrap:wrap;">${pill(item.status)}${item.deferredTo ? '<span class="tag">已延期</span>' : ''}</div></td>
                 <td>${priorityPill(item.priority)}</td>
                 <td><div class="cell-main"><span class="avatar-sm" style="background:#e0f2fe;color:#0369a1;">${esc(item.owner.slice(0, 1))}</span><span>${esc(item.owner)}</span></div></td>
                 <td><div class="flex" style="gap:4px;flex-wrap:wrap;">${(item.apps || []).map((app) => `<span class="tag">${esc(app)}</span>`).join('') || '<span class="faint">—</span>'}</div></td>
+                <td><div class="release-cell"><div class="release-select-wrap ${linkedRelease ? '' : 'unset'}"><span class="release-select-display" title="${esc(releaseDisplay)}">${esc(releaseDisplay)}</span><span class="release-select-chevron">▾</span><select class="req-release-select" data-action="req-release-select" data-id="${item.id}" aria-label="关联发布"><option value="" ${!linkedRelease ? 'selected' : ''}>未关联</option>${releases.map((release) => `<option value="${release.id}" ${linkedRelease?.id === release.id ? 'selected' : ''}>${esc(release.name)} (${esc(releaseWindow(release))})</option>`).join('')}</select></div></div></td>
                 <td class="nowrap">${esc(item.updated)}</td>
                 <td><div class="cell-actions">${!item.ready && !item.deferredTo ? `<button class="btn btn-ghost btn-xs" type="button" data-action="defer-req" data-id="${item.id}">延期</button>` : ''}<span class="muted">→</span></div></td>
-              </tr>`).join('') : `<tr><td colspan="8">${emptyTable('当前筛选下没有需求')}</td></tr>`}
+              </tr>`;
+              }).join('') : `<tr><td colspan="9">${emptyTable('当前筛选下没有需求')}</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1626,7 +1635,7 @@
       const status = releaseStatus(release);
       return `<tr class="row-click" data-action="open-release" data-id="${release.id}" tabindex="0">
         <td><div class="cell-main"><b>${esc(release.name)}</b><small>${esc(release.id)}</small></div></td>
-        <td class="nowrap"><span class="release-window">${esc(releaseWindow(release, true))}</span></td>
+        <td class="nowrap"><span class="release-window">${esc(releaseWindow(release))}</span></td>
         <td>${pill(status)}</td>
         <td><div class="release-req-cell">${releaseRequirementSummary(release)}</div></td>
         <td>${esc(release.createdBy)}</td>
@@ -2028,15 +2037,23 @@
   /* ---------------- pages: code ---------------- */
   function renderCode() {
     const project = currentProject();
+    const activeTab = state.codeTab === 'mrs' ? 'mrs' : 'repos';
     const tabs = [
       { id: 'repos', label: '代码仓库' },
-      { id: 'mrs', label: '合并请求' },
-      { id: 'docs', label: '文档与知识库' }
+      { id: 'mrs', label: '合并请求' }
     ];
     return `
-      ${pageHead('代码与文档', `项目：${esc(project.name)} · Gitea 唯一代码仓，文档由平台自管`, `<button class="btn btn-outline" type="button" data-action="toast" data-msg="演示环境：将打开 Gitea">${icon('external', 14)} 打开 Gitea</button>`)}
-      <div class="tabs">${tabs.map((tab) => `<button class="tab ${state.codeTab === tab.id ? 'active' : ''}" type="button" data-action="code-tab" data-tab="${tab.id}">${tab.label}</button>`).join('')}</div>
-      ${state.codeTab === 'repos' ? codeReposView() : state.codeTab === 'mrs' ? codeMrsView() : codeDocsView()}
+      ${pageHead('代码仓', `项目：${esc(project.name)} · Gitea 唯一代码仓，查看代码仓库与合并请求`, `<button class="btn btn-outline" type="button" data-action="toast" data-msg="演示环境：将打开 Gitea">${icon('external', 14)} 打开 Gitea</button>`)}
+      <div class="tabs">${tabs.map((tab) => `<button class="tab ${activeTab === tab.id ? 'active' : ''}" type="button" data-action="code-tab" data-tab="${tab.id}">${tab.label}</button>`).join('')}</div>
+      ${activeTab === 'mrs' ? codeMrsView() : codeReposView()}
+    `;
+  }
+
+  function renderKnowledge() {
+    const project = currentProject();
+    return `
+      ${pageHead('知识库', `项目：${esc(project.name)} · 团队知识与交付文档`)}
+      ${codeDocsView()}
     `;
   }
 
@@ -2815,6 +2832,8 @@
     const project = projectById(req.projectId);
     const comments = requirementComments(req.id);
     const appRelations = (req.apps || []).map((app) => appById(app)).filter(Boolean);
+    const linkedRelease = requirementRelease(req.id);
+    const releaseChoices = iterationReleases(req.iterationId);
     const ownerNames = [...new Set([
       ...(project?.members || []).map((member) => userById(member.userId)?.name).filter(Boolean),
       req.owner
@@ -2850,6 +2869,7 @@
               <div class="field"><label for="req-edit-status">状态</label><select id="req-edit-status" class="select">${requirementStatuses.map((status) => `<option value="${status}" ${req.status === status ? 'selected' : ''}>${status}</option>`).join('')}</select></div>
               <div class="field"><label for="req-edit-priority">优先级</label><select id="req-edit-priority" class="select">${priorities.map((priority) => `<option value="${priority}" ${req.priority === priority ? 'selected' : ''}>${priority}</option>`).join('')}</select></div>
               <div class="field"><label for="req-edit-owner">责任人</label><select id="req-edit-owner" class="select">${ownerNames.map((owner) => `<option value="${esc(owner)}" ${req.owner === owner ? 'selected' : ''}>${esc(owner)}</option>`).join('')}</select></div>
+              <div class="field"><label for="req-edit-release">关联发布</label><select id="req-edit-release" class="select"><option value="">不关联</option>${releaseChoices.map((release) => `<option value="${release.id}" ${linkedRelease?.id === release.id ? 'selected' : ''}>${esc(release.name)}</option>`).join('')}</select></div>
               <div class="field"><label for="req-edit-acceptance">验收标准</label><textarea id="req-edit-acceptance" class="textarea" rows="6" maxlength="1000" required>${esc(req.acceptance)}</textarea></div>
             </div>
           </div>
@@ -2869,6 +2889,14 @@
             <div class="drawer-section-title">关联任务</div>
             ${task ? `<button class="project-option" type="button" data-action="open-task-page" data-id="${task.id}" data-from="board"><span class="side-icon">${icon('bot', 15)}</span><span class="project-option-meta"><b>${esc(task.title)}</b><small>${esc(task.status)} · ${esc(task.agent)}</small></span><span style="margin-left:auto;">${pill(task.status)}</span></button>` : '<div class="empty-table">暂无关联任务</div>'}
           </div>
+        </div>
+        <div class="drawer-section">
+          <div class="drawer-section-title">关联发布</div>
+          ${linkedRelease ? `<div class="relation-item" style="cursor:default;">
+            <span class="relation-icon">${icon('rocket', 15)}</span>
+            <span class="relation-copy"><b>${esc(linkedRelease.name)}</b><small>${esc(releaseWindow(linkedRelease))} · ${esc(linkedRelease.id)}</small></span>
+            <span style="margin-left:auto;">${pill(releaseStatus(linkedRelease))}</span>
+          </div>` : '<div class="empty-table">暂无关联发布</div>'}
         </div>
         ${req.deferredTo ? `<div class="drawer-section"><div class="drawer-section-title">延期目标</div><div class="release-note"><b>已延期</b><br>目标：${esc(iterationById(req.deferredTo)?.name || 'backlog')}；不计入当前迭代发布。</div></div>` : ''}
       </div>
@@ -2896,6 +2924,12 @@
     const desc = descInput ? descInput.value.trim() : '';
     const acceptanceInput = $('#req-edit-acceptance');
     const acceptance = acceptanceInput ? acceptanceInput.value.trim() : '';
+    const releaseId = $('#req-edit-release')?.value || '';
+    const currentRelease = requirementRelease(req.id);
+    const beforeReleaseId = currentRelease?.id || '';
+    const targetRelease = releaseId ? releaseById(releaseId) : null;
+    if (releaseId && (!targetRelease || targetRelease.iterationId !== req.iterationId)) { toast('请选择当前迭代的发布。', 'warning'); return; }
+    const releaseChanged = releaseId !== beforeReleaseId;
     if (!title) { toast('请填写需求标题。', 'warning'); if (titleInput) titleInput.focus(); return; }
     if (!['分析', '设计', '开发', '测试', '发布'].includes(status)) { toast('请选择有效的需求状态。', 'warning'); return; }
     if (!['P0', 'P1', 'P2', 'P3'].includes(priority)) { toast('请选择有效的优先级。', 'warning'); return; }
@@ -2904,7 +2938,7 @@
     if (!acceptance) { toast('验收标准不能为空。', 'warning'); if (acceptanceInput) acceptanceInput.focus(); return; }
     const before = { title: req.title, status: req.status, priority: req.priority, owner: req.owner, desc: req.desc, acceptance: req.acceptance };
     const after = { title, status, priority, owner, desc, acceptance };
-    if (Object.keys(after).every((key) => after[key] === before[key])) {
+    if (!releaseChanged && Object.keys(after).every((key) => after[key] === before[key])) {
       toast('没有需要保存的修改。', 'info');
       return;
     }
@@ -2913,11 +2947,13 @@
       updated: nowTime(),
       ready: !req.deferredTo && ['测试', '发布'].includes(status)
     });
+    if (releaseChanged) applyRequirementRelease(req, releaseId);
     const autoTask = statusChanged ? createTaskFromRequirement(req, status) : null;
     const changes = requirementEditChanges(before, after);
+    if (releaseChanged) changes.push({ label: '关联发布', before: currentRelease?.name || '未关联', after: targetRelease?.name || '未关联' });
     if (autoTask) changes.push({ label: '自动任务', after: `${autoTask.id} · ${autoTask.type}` });
     addRequirementHistory(req, '更新需求', changes);
-    audit('更新需求', req.id, '成功', { before, after });
+    audit('更新需求', req.id, '成功', { before: { ...before, release: beforeReleaseId }, after: { ...after, release: releaseId } });
     renderMain();
     openRequirementDrawer(req.id);
     toast(
@@ -3292,14 +3328,14 @@
 
   function openReleaseForm() {
     const iteration = currentIteration();
-    const candidates = iterationRequirements(iteration.id).filter((req) => !req.deferredTo);
+    const candidates = iterationRequirements(iteration.id).filter((req) => !req.deferredTo && !requirementRelease(req.id));
     const checklist = candidates.length
       ? candidates.map((req) => `<label class="release-req-option">
           <input type="checkbox" name="requirements" value="${req.id}">
           <span class="release-req-main"><b>${esc(req.id)}</b><span>${esc(req.title)}</span></span>
           <span class="release-req-meta">${pill(req.status)}<span>${esc(req.owner)}</span></span>
         </label>`).join('')
-      : '<div class="empty-table">当前迭代没有可关联的未延期需求</div>';
+      : '<div class="empty-table">当前迭代没有未关联的未延期需求</div>';
     openPanel({
       title: '新建发布', sub: `${iteration.name} · 发布排期`, variant: 'modal',
       body: `<form id="release-form" data-form="new-release">
@@ -3308,7 +3344,7 @@
           <div class="field"><label for="release-start">开始时间</label><input id="release-start" name="startAt" class="input" type="datetime-local" value="2026-10-24T20:00" required></div>
           <div class="field"><label for="release-end">结束时间</label><input id="release-end" name="endAt" class="input" type="datetime-local" value="2026-10-24T23:00" required></div>
         </div>
-        <div class="field"><label>关联需求</label><div class="release-req-options">${checklist}</div><div class="form-hint">仅显示当前迭代未延期需求；至少选择 1 个。</div></div>
+        <div class="field"><label>关联需求</label><div class="release-req-options">${checklist}</div><div class="form-hint">仅显示当前迭代未延期且未关联其他发布的需求；至少选择 1 个。</div></div>
         <div class="form-hint">发布状态按时间段自动推导。发布管理仅用于排期，实际发布执行请前往批次发布。</div>
         <div class="btn-row" style="justify-content:flex-end;margin-top:18px;"><button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="submit" ${candidates.length ? '' : 'disabled'}>创建发布</button></div>
       </form>`
@@ -3323,7 +3359,7 @@
     const body = `<div class="drawer-section">
       <div class="meta-grid">
         <div class="meta-item"><div class="meta-label">状态</div><div class="meta-value">${pill(releaseStatus(release))}</div></div>
-        <div class="meta-item"><div class="meta-label">时间段</div><div class="meta-value">${esc(formatDateTime(release.startAt))} → ${esc(formatDateTime(release.endAt))}</div></div>
+        <div class="meta-item"><div class="meta-label">时间段</div><div class="meta-value">${esc(releaseWindow(release))}</div></div>
         <div class="meta-item"><div class="meta-label">创建人</div><div class="meta-value">${esc(release.createdBy)}</div></div>
         <div class="meta-item"><div class="meta-label">创建时间</div><div class="meta-value">${esc(release.createdAt)}</div></div>
       </div>
@@ -3640,6 +3676,8 @@
       if (action === 'req-priority-filter') { state.reqPriorityFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-owner-filter') { state.reqOwnerFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-app-filter') { state.reqAppFilter = target.value; state.reqPage = 1; renderMain(); return; }
+      if (action === 'req-release-filter') { state.reqReleaseFilter = target.value; state.reqPage = 1; renderMain(); return; }
+      if (action === 'req-release-select') { setRequirementRelease(id, target.value); return; }
       if (action === 'member-role') { changeMemberRole(id, target.value); return; }
       if (action === 'mcp-tool-change') { state.mcpTool = target.value; const form = target.closest('form'); if (form) { const args = form.querySelector('#mcp-args'); const cap = capabilityById(state.mcpTool); if (args && cap) args.value = JSON.stringify(cap.example, null, 2); } renderMain(); return; }
       if (action === 'obs-project') { state.obsProject = target.value; renderMain(); return; }
@@ -4144,6 +4182,28 @@
     toast(`${req.id} 已延期至 ${target === 'backlog' ? 'Backlog' : iterationById(target)?.name || target}。`, 'success', '需求已延期');
   }
 
+  function applyRequirementRelease(req, releaseId) {
+    const target = releaseId ? releaseById(releaseId) : null;
+    RELEASES.forEach((release) => {
+      release.requirementIds = (release.requirementIds || []).filter((id) => id !== req.id);
+    });
+    if (target) target.requirementIds.push(req.id);
+    return target;
+  }
+
+  function setRequirementRelease(reqId, releaseId) {
+    const req = requirementById(reqId);
+    if (!req) return;
+    const target = releaseId ? releaseById(releaseId) : null;
+    if (releaseId && (!target || target.iterationId !== req.iterationId)) { toast('请选择当前迭代的发布。', 'warning'); renderMain(); return; }
+    const before = requirementRelease(req.id)?.id || '';
+    if (before === (target?.id || '')) return;
+    applyRequirementRelease(req, releaseId);
+    audit('更新需求发布关联', req.id, '成功', { before, after: target?.id || '' });
+    renderMain();
+    toast(target ? `${req.id} 已关联发布 ${target.name}。` : `${req.id} 已解除发布关联。`, 'success', '发布关联已更新');
+  }
+
   function submitRelease(form) {
     const data = new FormData(form);
     const name = String(data.get('name') || '').trim();
@@ -4156,6 +4216,7 @@
     const iteration = currentIteration();
     const allowed = new Set(iterationRequirements(iteration.id).filter((req) => !req.deferredTo).map((req) => req.id));
     if (!requirementIds.length || requirementIds.some((id) => !allowed.has(id))) { toast('请至少选择一个当前迭代的未延期需求。', 'warning'); return; }
+    if (requirementIds.some((id) => requirementRelease(id))) { toast('所选需求已关联其他发布，请刷新后重试。', 'warning'); return; }
     const release = {
       id: `REL-${++state.releaseSeq}`,
       name,

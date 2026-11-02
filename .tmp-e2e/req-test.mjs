@@ -174,7 +174,7 @@ try {
   const releaseRows = await evaluate(`Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')).map((tr) => tr.innerText)`);
   check('release management seeds three releases', releaseRows.length === 3, String(releaseRows.length));
   const releaseState = await evaluate(`(() => { const rows = Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')); const byId = Object.fromEntries(rows.map((tr) => [tr.dataset.id, tr.innerText])); return { gray: byId['REL-101'] || '', formal: byId['REL-102'] || '', pre: byId['REL-103'] || '' }; })()`);
-  check('release status derives from time window', releaseState.gray.includes('进行中') && releaseState.formal.includes('未开始') && releaseState.pre.includes('已结束') && releaseState.gray.includes('10-24 09:00') && releaseState.formal.includes('10-24 20:00'), JSON.stringify(releaseState).slice(0, 240));
+  check('release status derives from time window', releaseState.gray.includes('进行中') && releaseState.formal.includes('未开始') && releaseState.pre.includes('已结束') && releaseState.gray.includes('2026-10-24 09:00 ~ 2026-10-24 12:00') && releaseState.formal.includes('2026-10-24 20:00 ~ 2026-10-24 23:00'), JSON.stringify(releaseState).slice(0, 240));
   check('old release gate content removed', (await evaluate(`!document.body.innerText.includes('发布就绪检查')`)) === true);
   await sleep(250);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/release-management.png', Buffer.from(shot.data, 'base64')));
@@ -190,9 +190,10 @@ try {
     hasStart: !!document.querySelector('#release-start'),
     hasEnd: !!document.querySelector('#release-end'),
     optionCount: document.querySelectorAll('#release-form input[name="requirements"]').length,
-    hasDeferred: Array.from(document.querySelectorAll('#release-form input[name="requirements"]')).some((el) => el.value === 'RQ-104' || el.value === 'RQ-110')
+    hasDeferred: Array.from(document.querySelectorAll('#release-form input[name="requirements"]')).some((el) => el.value === 'RQ-104' || el.value === 'RQ-110'),
+    hasLinked: Array.from(document.querySelectorAll('#release-form input[name="requirements"]')).some((el) => ['RQ-101', 'RQ-102', 'RQ-103', 'RQ-111', 'RQ-112', 'RQ-113'].includes(el.value))
   }))()`);
-  check('new release form has name, time range and requirement choices', releaseFormInfo.hasName && releaseFormInfo.hasStart && releaseFormInfo.hasEnd && releaseFormInfo.optionCount === 11 && !releaseFormInfo.hasDeferred, JSON.stringify(releaseFormInfo));
+  check('new release form has name, time range and requirement choices', releaseFormInfo.hasName && releaseFormInfo.hasStart && releaseFormInfo.hasEnd && releaseFormInfo.optionCount === 5 && !releaseFormInfo.hasDeferred && !releaseFormInfo.hasLinked, JSON.stringify(releaseFormInfo));
   await sleep(250);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/release-form.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`(() => { const form = document.querySelector('#release-form'); form.elements.name.value = 'v2.4 晚间发布'; form.elements.startAt.value = '2026-10-24T20:00'; form.elements.endAt.value = '2026-10-24T19:00'; form.requestSubmit(); return true; })()`);
@@ -201,7 +202,7 @@ try {
   await evaluate(`(() => { const form = document.querySelector('#release-form'); form.elements.endAt.value = '2026-10-24T23:00'; form.requestSubmit(); return true; })()`);
   await waitDom(`document.body.innerText.includes('请至少选择一个')`);
   check('release requires at least one requirement', true);
-  await evaluate(`(() => { const form = document.querySelector('#release-form'); form.querySelector('input[name="requirements"][value="RQ-101"]').click(); form.querySelector('input[name="requirements"][value="RQ-102"]').click(); form.requestSubmit(); return true; })()`);
+  await evaluate(`(() => { const form = document.querySelector('#release-form'); form.querySelector('input[name="requirements"][value="RQ-116"]').click(); form.querySelector('input[name="requirements"][value="RQ-117"]').click(); form.requestSubmit(); return true; })()`);
   await waitDom(`document.querySelectorAll('.release-manage tbody tr[data-id]').length === 4`);
   const createdRelease = await evaluate(`(() => { const row = Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')).find((tr) => tr.innerText.includes('v2.4 晚间发布')); return row ? { id: row.dataset.id, text: row.innerText } : null; })()`);
   check('new release is added with derived status', !!createdRelease && createdRelease.id === 'REL-104' && createdRelease.text.includes('未开始') && createdRelease.text.includes('2 个'), JSON.stringify(createdRelease));
@@ -210,11 +211,51 @@ try {
   await evaluate(`document.querySelector('.release-manage tbody tr[data-id="REL-104"]').click()`);
   await waitDom(`!!document.querySelector('.overlay.open .drawer')`);
   const releaseDetail = await evaluate(`(() => { const root = document.querySelector('.overlay.open .drawer'); return { title: root.querySelector('.drawer-title')?.textContent || '', text: root.innerText }; })()`);
-  check('release detail shows window and requirements', releaseDetail.title.includes('v2.4 晚间发布') && releaseDetail.text.includes('2026-10-24 20:00') && releaseDetail.text.includes('2026-10-24 23:00') && releaseDetail.text.includes('RQ-101') && releaseDetail.text.includes('RQ-102') && releaseDetail.text.includes('批次发布'), JSON.stringify(releaseDetail).slice(0, 240));
+  check('release detail shows window and requirements', releaseDetail.title.includes('v2.4 晚间发布') && releaseDetail.text.includes('2026-10-24 20:00 ~ 2026-10-24 23:00') && releaseDetail.text.includes('RQ-116') && releaseDetail.text.includes('RQ-117') && releaseDetail.text.includes('批次发布'), JSON.stringify(releaseDetail).slice(0, 240));
   await sleep(250);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/release-detail.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`document.querySelector('[data-action="close-overlay"]').click()`);
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
+  await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
+
+  const requirementHeaders = await evaluate(`Array.from(document.querySelectorAll('.req-table thead tr:first-child th')).map((th) => th.textContent.trim())`);
+  check('requirement list has release column', requirementHeaders.includes('发布'), requirementHeaders.join(' | '));
+  const linkedSelect = await evaluate(`document.querySelector('[data-action="req-release-select"][data-id="RQ-101"]')?.value`);
+  check('requirement row shows linked release', linkedSelect === 'REL-101', String(linkedSelect));
+  const linkedReleaseRow = await evaluate(`document.querySelector('.req-table tbody tr[data-id="RQ-101"]')?.innerText || ''`);
+  check('requirement row shows release time window', linkedReleaseRow.includes('2026-10-24 09:00 ~ 2026-10-24 12:00'), JSON.stringify(linkedReleaseRow).slice(0, 160));
+  const releaseDisplay = await evaluate(`(() => { const el = document.querySelector('.req-table tbody tr[data-id="RQ-101"] .release-select-display'); if (!el) return null; const style = getComputedStyle(el); return { text: el.textContent, overflow: style.textOverflow, whiteSpace: style.whiteSpace, clipped: el.scrollWidth > el.clientWidth }; })()`);
+  check('release display shows name and time with ellipsis', !!releaseDisplay && releaseDisplay.text === 'v2.4 灰度发布 (2026-10-24 09:00 ~ 2026-10-24 12:00)' && releaseDisplay.overflow === 'ellipsis' && releaseDisplay.whiteSpace === 'nowrap' && releaseDisplay.clipped, JSON.stringify(releaseDisplay));
+  await evaluate(`document.querySelector('[data-action="req-page"][data-page="2"]').click()`);
+  await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 3 && !!document.querySelector('.req-table tbody tr[data-id="RQ-120"]')`);
+  const emptySelect = await evaluate(`document.querySelector('[data-action="req-release-select"][data-id="RQ-120"]')?.value`);
+  check('requirement row without release is unlinked', emptySelect === '', String(emptySelect));
+  await evaluate(`(() => { const select = document.querySelector('[data-action="req-release-select"][data-id="RQ-120"]'); select.value = 'REL-101'; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await waitDom(`document.querySelector('[data-action="req-release-select"][data-id="RQ-120"]')?.value === 'REL-101'`);
+  check('requirement list selects a release', true);
+  await evaluate(`(() => { const select = document.querySelector('[data-action="req-release-select"][data-id="RQ-120"]'); select.value = 'REL-102'; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await waitDom(`document.querySelector('[data-action="req-release-select"][data-id="RQ-120"]')?.value === 'REL-102'`);
+  check('requirement list moves release one-to-one', true);
+  await evaluate(`document.querySelector('.req-table tbody tr[data-id="RQ-120"]').click()`);
+  await waitDom(`!!document.querySelector('#req-edit-release')`);
+  const detailReleaseValue = await evaluate(`document.querySelector('#req-edit-release')?.value`);
+  check('requirement detail shows current release', detailReleaseValue === 'REL-102', String(detailReleaseValue));
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/requirement-release-edit.png', Buffer.from(shot.data, 'base64')));
+  await evaluate(`(() => { const select = document.querySelector('#req-edit-release'); select.value = 'REL-101'; document.querySelector('[data-action="save-req-edit"]').click(); return true; })()`);
+  await waitDom(`document.querySelector('#req-edit-release')?.value === 'REL-101'`);
+  check('requirement detail selects release', true);
+  await evaluate(`document.querySelector('[data-action="req-detail-tab"][data-tab="relations"]').click()`);
+  const releaseRelation = await evaluate(`document.querySelector('.overlay.open [data-pane="relations"]')?.innerText || ''`);
+  check('requirement detail shows linked release', releaseRelation.includes('关联发布') && releaseRelation.includes('v2.4 灰度发布') && releaseRelation.includes('2026-10-24 09:00 ~ 2026-10-24 12:00'), releaseRelation.slice(0, 200));
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/requirement-release-detail.png', Buffer.from(shot.data, 'base64')));
+  await evaluate(`document.querySelector('[data-action="close-overlay"]').click()`);
+  await evaluate(`(() => { const el = document.getElementById('req-release-filter'); el.value = 'REL-101'; el.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 3`);
+  const releaseFiltered = await rowIds();
+  check('release filter works', releaseFiltered.includes('RQ-120') && releaseFiltered.includes('RQ-101') && !releaseFiltered.includes('RQ-116'), releaseFiltered.join(','));
+  await evaluate(`document.querySelector('[data-action="reset-req-filters"]').click()`);
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
 
   await evaluate(`document.querySelector('.req-table tbody tr[data-id="RQ-101"]').click()`);
@@ -247,7 +288,7 @@ try {
     const root = document.querySelector('.overlay.open .drawer');
     root.querySelector('[data-action="req-detail-tab"][data-tab="relations"]').click();
     const pane = root.querySelector('[data-pane="relations"]');
-    return { detailHidden: root.querySelector('[data-pane="detail"]').hidden, relationsVisible: !pane.hidden, apps: pane.querySelectorAll('.relation-item').length, hasTask: pane.innerText.includes('需求分析') };
+    return { detailHidden: root.querySelector('[data-pane="detail"]').hidden, relationsVisible: !pane.hidden, apps: pane.querySelectorAll('.req-relation-grid .relation-item').length, hasTask: pane.innerText.includes('需求分析') };
   })()`);
   check('relations tab shows apps and task', relations.detailHidden && relations.relationsVisible && relations.apps === 2 && relations.hasTask, JSON.stringify(relations));
   await sleep(300);
@@ -343,6 +384,29 @@ try {
   await waitDom(`!!document.querySelector('.overlay.open .drawer')`);
   const deferHistory = await evaluate(`(() => { const root = document.querySelector('.overlay.open .drawer'); root.querySelector('[data-action="req-detail-tab"][data-tab="history"]').click(); return root.querySelector('[data-pane="history"]')?.innerText || ''; })()`);
   check('defer action appends history', deferHistory.includes('延期需求') && deferHistory.includes('Backlog') && deferHistory.includes('依赖知识库索引改造'), deferHistory.slice(0, 80));
+
+  await evaluate(`document.querySelector('[data-action="close-overlay"]').click()`);
+  await evaluate(`document.querySelector('[data-action="project-switch"]').click()`);
+  await waitDom(`!!document.querySelector('.project-option[data-id="p-order"]')`);
+  await evaluate(`document.querySelector('.project-option[data-id="p-order"]').click()`);
+  await waitDom(`document.querySelector('.sidebar .project-meta b')?.textContent === '订单中心'`);
+  await evaluate(`location.hash = '#/code'`);
+  await waitDom(`document.querySelector('.page-title')?.textContent === '代码仓'`);
+  check('code sidebar entry opens code repos page', (await evaluate(`(() => { const text = document.querySelector('.sidebar')?.innerText || ''; return text.includes('代码仓') && text.includes('知识库') && !text.includes('代码与文档'); })()`)) === true);
+  const codeTabs = await evaluate(`Array.from(document.querySelectorAll('.tabs .tab')).map((el) => el.textContent.trim())`);
+  check('code page keeps repos and merge requests tabs', JSON.stringify(codeTabs) === JSON.stringify(['代码仓库', '合并请求']), codeTabs.join(','));
+  check('code page renders repos', (await evaluate(`document.querySelectorAll('#main .card').length`)) >= 4);
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/code-repos.png', Buffer.from(shot.data, 'base64')));
+
+  await evaluate(`location.hash = '#/knowledge'`);
+  await waitDom(`document.querySelector('.page-title')?.textContent === '知识库'`);
+  check('knowledge sidebar item is active', (await evaluate(`document.querySelector('.sidebar .side-item.active')?.textContent.includes('知识库')`)) === true);
+  check('knowledge page renders docs', (await evaluate(`(() => { const main = document.querySelector('#main'); return !!main && main.innerText.includes('订单履约状态机说明') && main.querySelectorAll('tbody tr').length >= 2; })()`)) === true);
+  check('knowledge page has rebuild index action', (await evaluate(`!!document.querySelector('[data-action="rebuild-index"]')`)) === true);
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/knowledge-base.png', Buffer.from(shot.data, 'base64')));
+
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {
   if (errors.length) console.log(`CONSOLE ERRORS: ${errors.join(' | ')}`);

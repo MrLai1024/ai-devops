@@ -8,6 +8,8 @@
 
 **Tech Stack:** 纯 HTML / CSS / JavaScript（IIFE、hash 路由、内存数据）；Node.js + Edge CDP 测试；Python `http.server` 本地服务。
 
+> 后续变更（2026-11-02）：需求与发布改为一对一关联。种子数据、发布创建表单过滤、需求侧关联与筛选以 [设计文档 v0.2](../specs/2026-11-02-release-management-design.md) 为准；本文档保留原始实现步骤。
+
 ---
 
 ## File Structure
