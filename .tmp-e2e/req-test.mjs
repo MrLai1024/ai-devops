@@ -393,8 +393,8 @@ try {
   await evaluate(`location.hash = '#/code'`);
   await waitDom(`document.querySelector('.page-title')?.textContent === '代码仓'`);
   check('code sidebar entry opens code repos page', (await evaluate(`(() => { const text = document.querySelector('.sidebar')?.innerText || ''; return text.includes('代码仓') && text.includes('知识库') && !text.includes('代码与文档'); })()`)) === true);
-  const codeTabs = await evaluate(`Array.from(document.querySelectorAll('.tabs .tab')).map((el) => el.textContent.trim())`);
-  check('code page keeps repos and merge requests tabs', JSON.stringify(codeTabs) === JSON.stringify(['代码仓库', '合并请求']), codeTabs.join(','));
+  const codeTabCount = await evaluate(`document.querySelectorAll('#main .tabs .tab').length`);
+  check('code page is a pure repo list', codeTabCount === 0 && (await evaluate(`document.querySelectorAll('[data-action="open-repo"]').length`)) >= 4, String(codeTabCount));
   check('code page renders repos', (await evaluate(`document.querySelectorAll('#main .card').length`)) >= 4);
   await sleep(250);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/code-repos.png', Buffer.from(shot.data, 'base64')));
