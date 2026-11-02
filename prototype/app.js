@@ -748,7 +748,6 @@
   const FLAGS = [
     { id: 'flag-1', name: 'Agent 自动部署 test', key: 'agent.auto_test_deploy', desc: 'Coding Agent 通过测试后可自动部署到 test；prod 仍需人工审批。', enabled: true, owner: '平台运维', updated: '2026-10-20' },
     { id: 'flag-2', name: '能力 MCP 总开关', key: 'capability.mcp_enabled', desc: '关闭后所有 MCP 工具不可用，REST 不受影响。', enabled: true, owner: '平台管理员', updated: '2026-10-18' },
-    { id: 'flag-3', name: '批次发布', key: 'release.batch_enabled', desc: '允许按迭代创建多应用批次发布。', enabled: true, owner: '平台管理员', updated: '2026-10-22' },
     { id: 'flag-4', name: 'prod 双人审批', key: 'release.require_two_approvers', desc: 'prod 晋升至少需要两名审批人。', enabled: true, owner: '平台运维', updated: '2026-10-24' },
     { id: 'flag-5', name: '外部 LLM 提供方', key: 'llm.external_provider', desc: '允许经 LLM Gateway 调用外部 DeepSeek；脱敏与审计始终开启。', enabled: true, owner: '平台管理员', updated: '2026-10-16' },
     { id: 'flag-6', name: '沙箱 gVisor', key: 'sandbox.gvisor', desc: '强制沙箱 Pod 使用 gVisor runtimeClass。', enabled: true, owner: '平台运维', updated: '2026-10-21' },
@@ -1035,12 +1034,6 @@ func Next(state State, picked bool) State {
     '7d': { labels: ['10-18', '10-19', '10-20', '10-21', '10-22', '10-23', '10-24'], delivery: [12, 18, 15, 24, 21, 28, 26], agent: [92, 94, 93, 95, 96, 96, 97], tokens: [1.2, 1.5, 1.1, 1.8, 2.0, 1.7, 2.2], release: [3, 4, 2, 5, 4, 5, 5] }
   };
 
-  const RELEASE_HISTORY = [
-    { id: 'rel-24', iterationId: 'it-24', projectId: 'p-order', version: 'v2.4', status: 'PENDING_APPROVAL', time: '2026-10-24 09:30', apps: '4 个应用' },
-    { id: 'rel-23', iterationId: 'it-23', projectId: 'p-customer', version: 'v2.3', status: 'SUCCEEDED', time: '2026-09-30 16:20', apps: '1 个应用' },
-    { id: 'rel-22', iterationId: 'it-22', projectId: 'p-order', version: 'v2.3.1', status: 'SUCCEEDED', time: '2026-09-18 11:05', apps: '3 个应用' }
-  ];
-
   const RELEASES = [
     { id: 'REL-101', name: 'v2.4 灰度发布', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-24T09:00', endAt: '2026-10-24T12:00', requirementIds: ['RQ-101', 'RQ-102'], createdBy: '张明', createdAt: '2026-10-23 18:20' },
     { id: 'REL-102', name: 'v2.4 正式发布', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-24T20:00', endAt: '2026-10-24T23:00', requirementIds: ['RQ-103', 'RQ-111'], createdBy: '张明', createdAt: '2026-10-24 09:10' },
@@ -1049,29 +1042,10 @@ func Next(state State, picked bool) State {
   const DEMO_NOW = '2026-10-24T10:30';
 
   const NOTIFICATIONS = [
-    { id: 'n-1', title: '迭代 v2.4 发布计划待审批', desc: '张明发起了批次发布，涉及 4 个应用', time: '10 分钟前', route: '#/releases', tone: 'warning' },
     { id: 'n-2', title: 'T-203 等待审批', desc: 'Coding Agent 已完成代码修改与单测', time: '22 分钟前', route: '#/agents', tone: 'info' },
     { id: 'n-3', title: 'order-api 延迟超过 SLO', desc: 'p95 528ms，持续 10 分钟', time: '1 小时前', route: '#/observability', tone: 'danger' },
     { id: 'n-4', title: '能力策略 v12 已生效', desc: 'pipeline.run 已关闭 MCP 暴露', time: '2 小时前', route: '#/capabilities', tone: 'success' }
   ];
-
-  /* ---------------- release model ---------------- */
-  function freshRelease() {
-    return {
-      id: 'rel-24', iterationId: 'it-24', projectId: 'p-order', version: 'v2.4',
-      status: 'PENDING_APPROVAL', requestedBy: '张明', approvedBy: null,
-      createdAt: '2026-10-24 09:30', plannedAt: '2026-10-24 10:00', startedAt: null, finishedAt: null,
-      simulating: false,
-      gate: { ready: 6, deferred: 2, signed: true, sbom: true, test: true },
-      notes: '订单履约优化：超时预警、异常单自动分派、履约节点配置化、状态机可视化。',
-      items: [
-        { id: 'ri-1', appId: 'order-api', app: 'order-api', env: 'prod', digest: 'sha256:8f3a9c2e7b41', commit: 'a1f3c9e', status: 'PENDING', order: 1, deployedAt: null, failure: null },
-        { id: 'ri-2', appId: 'order-web', app: 'order-web', env: 'prod', digest: 'sha256:2c9d71be0a55', commit: 'b7d2e11', status: 'PENDING', order: 2, deployedAt: null, failure: null },
-        { id: 'ri-3', appId: 'order-worker', app: 'order-worker', env: 'prod', digest: 'sha256:71be2c9d4f08', commit: 'c9a4f02', status: 'PENDING', order: 3, deployedAt: null, failure: null },
-        { id: 'ri-4', appId: 'order-admin', app: 'order-admin', env: 'prod', digest: 'sha256:9d02a1f3c9e6', commit: 'f8a2c11', status: 'PENDING', order: 4, deployedAt: null, failure: null }
-      ]
-    };
-  }
 
   const RELEASE_STATUS_RANK = { 进行中: 0, 未开始: 1, 已结束: 2 };
 
@@ -1114,8 +1088,7 @@ func Next(state State, picked bool) State {
     { id: 'projects', label: '项目空间', route: '#/projects', visible: true },
     { id: 'app-center', label: '应用中心', route: '#/app-center', visible: true },
     { id: 'raw-requirements', label: '原始需求', route: '#/raw-requirements', visible: true },
-    { id: 'capabilities', label: '能力中心', route: '#/capabilities', visible: true },
-    { id: 'admin', label: '平台管理', route: '#/admin/users', visible: true }
+    { id: 'capabilities', label: '能力中心', route: '#/capabilities', visible: true }
   ];
 
   const state = {
@@ -1149,7 +1122,6 @@ func Next(state State, picked bool) State {
     obsProject: 'all',
     auditSearch: '',
     navConfig: DEFAULT_NAV.map((item) => ({ ...item })),
-    release: freshRelease(),
     releaseSeq: 103,
     notificationsRead: false,
     pendingReqId: null,
@@ -1225,14 +1197,13 @@ func Next(state State, picked bool) State {
   /* ---------------- routes ---------------- */
   const ROUTES = {
     '#/workspace': { module: 'workspace', page: 'placeholder', title: '工作台', placeholder: true },
-    '#/projects': { module: 'projects', page: 'projects', sidebar: 'project', title: '项目总览' },
+    '#/projects': { module: 'projects', page: 'projects', sidebar: 'none', title: '项目空间' },
     '#/members': { module: 'projects', page: 'members', sidebar: 'project', title: '团队管理' },
     '#/requirements': { module: 'projects', page: 'requirements', sidebar: 'project', title: '需求管理' },
     '#/agents': { module: 'projects', page: 'agents', sidebar: 'project', title: 'Agent 任务' },
     '#/code': { module: 'projects', page: 'code', sidebar: 'project', title: '代码仓' },
     '#/knowledge': { module: 'projects', page: 'knowledge', sidebar: 'project', title: '知识库' },
     '#/pipelines': { module: 'projects', page: 'pipelines', sidebar: 'project', title: '流水线' },
-    '#/releases': { module: 'projects', page: 'releases', sidebar: 'project', title: '批次发布' },
     '#/runtime': { module: 'projects', page: 'runtime', sidebar: 'project', title: '应用运行' },
     '#/observability': { module: 'projects', page: 'observability', sidebar: 'project', title: '可观测' },
     '#/capabilities': { module: 'capabilities', page: 'capabilities', sidebar: 'capability', title: '能力目录' },
@@ -1303,7 +1274,7 @@ func Next(state State, picked bool) State {
       : (repoRouteInfo() ? ROUTES['#/code'] : (ROUTES[state.route] || ROUTES['#/projects']));
     const sidebar = $('#sidebar');
     const shell = $('#shell');
-    if (meta.placeholder) {
+    if (meta.placeholder || meta.sidebar === 'none' || (meta.sidebar === 'project' && !PROJECTS.length)) {
       sidebar.innerHTML = '';
       shell.classList.add('no-sidebar');
       return;
@@ -1320,14 +1291,10 @@ func Next(state State, picked bool) State {
     const iteration = currentIteration();
     const requirementCount = iteration ? iterationRequirements(iteration.id).length : 0;
     const items = [
-      { page: 'projects', label: '项目总览', icon: 'grid', route: '#/projects' },
       { page: 'requirements', label: '需求管理', icon: 'layers', route: '#/requirements' },
-      { page: 'agents', label: 'Agent 任务', icon: 'bot', route: '#/agents' },
       { page: 'code', label: '代码仓', icon: 'code', route: '#/code' },
       { page: 'knowledge', label: '知识库', icon: 'file', route: '#/knowledge' },
       { page: 'pipelines', label: '流水线', icon: 'pipe', route: '#/pipelines' },
-      { page: 'releases', label: '批次发布', icon: 'rocket', route: '#/releases' },
-      { page: 'runtime', label: '应用运行', icon: 'server', route: '#/runtime' },
       { page: 'observability', label: '可观测', icon: 'chart', route: '#/observability' },
       { page: 'members', label: '团队管理', icon: 'users', route: '#/members' }
     ];
@@ -1343,11 +1310,6 @@ func Next(state State, picked bool) State {
           <span class="side-icon">${icon(item.icon, 15)}</span><span>${esc(item.label)}</span>
           ${item.page === 'requirements' && requirementCount ? `<span class="side-badge">${requirementCount}</span>` : ''}
         </button>`).join('')}
-      <div class="side-divider"></div>
-      <div class="side-label">快捷操作</div>
-      <button class="side-item" type="button" data-action="new-requirement"><span class="side-icon">${icon('plus', 15)}</span><span>新建需求</span></button>
-      <button class="side-item" type="button" data-action="new-task"><span class="side-icon">${icon('bot', 15)}</span><span>启动 Agent</span></button>
-      <div class="side-foot"><b>Agent 半自动</b>test 自动部署，prod 晋升需人工审批；沙箱不持有 prod 凭据。</div>
     `;
   }
 
@@ -1429,6 +1391,7 @@ func Next(state State, picked bool) State {
   }
 
   function renderPage(meta) {
+    if (!PROJECTS.length && meta.module === 'projects') return renderProjects();
     const repoInfo = repoRouteInfo();
     if (repoInfo) return repoInfo.mrNumber ? renderMrDetail(repoInfo.repoId, repoInfo.mrNumber) : renderRepoDetail(repoInfo.repoId);
     const taskId = taskIdFromRoute();
@@ -1441,7 +1404,6 @@ func Next(state State, picked bool) State {
       case 'code': return renderCode();
       case 'knowledge': return renderKnowledge();
       case 'pipelines': return renderPipelines();
-      case 'releases': return renderReleases();
       case 'runtime': return renderRuntime();
       case 'observability': return renderObservability();
       case 'capabilities': return renderCapabilities();
@@ -1459,72 +1421,22 @@ func Next(state State, picked bool) State {
 
   /* ---------------- pages: projects ---------------- */
   function renderProjects() {
-    const project = currentProject();
-    const activeTasks = TASKS.filter((item) => ['运行中', '待确认'].includes(item.status)).length;
-    const readyTotal = REQUIREMENTS.filter((item) => item.ready).length;
-    const history = RELEASE_HISTORY.map((item) => item.id === 'rel-24' ? { ...item, status: state.release.status } : item);
-    const pending = [
-      { title: '需求分析待确认', desc: '订单履约超时预警 · T-201', pill: '待确认', route: '#/agents', icon: 'bot', tone: 'warning' },
-      { title: '迭代 v2.4 发布计划待审批', desc: '4 个应用 · 张明发起', pill: '待审批', route: '#/releases', icon: 'rocket', tone: 'warning' },
-      { title: '发布项 order-worker 冒烟失败', desc: '等待重试或回滚', pill: '失败', route: '#/releases', icon: 'alert', tone: 'danger' },
-      { title: 'order-api 延迟超过 SLO', desc: 'p95 528ms · 持续 10 分钟', pill: '严重', route: '#/observability', icon: 'chart', tone: 'danger' }
-    ];
+    const hasProjects = PROJECTS.length > 0;
     return `
-      ${pageHead('项目总览', `欢迎回来，${esc(currentProject().owner)}。这里是平台交付概览。`, `
-        <button class="btn btn-outline" type="button" data-action="toast" data-msg="筛选器为演示占位">${icon('filter', 14)} 筛选</button>
-        <button class="btn btn-outline" type="button" data-action="new-requirement">${icon('plus', 14)} 新建需求</button>
-        <button class="btn btn-primary" type="button" data-action="new-project">${icon('plus', 14)} 新建项目</button>`)}
-      <div class="kpi-grid">
-        ${kpi('活跃项目', String(PROJECTS.filter((item) => item.status === '活跃').length), '<span class="kpi-delta up">↑ 1</span> 本月新增', { icon: 'grid', hero: true })}
-        ${kpi('进行中迭代', String(ITERATIONS.filter((item) => item.status !== '已发布').length), '<span class="kpi-delta up">2</span> 个待发布', { icon: 'layers' })}
-        ${kpi('本周 Agent 任务', String(Math.max(activeTasks, 12)), '<span class="kpi-delta up">96.2%</span> 成功率', { icon: 'bot' })}
-        ${kpi('本周发布', '5', '<span class="kpi-delta up">4</span> 成功 · 1 部分失败', { icon: 'rocket' })}
-      </div>
-      <div class="grid grid-main">
-        ${card('交付趋势', '近 7 天需求、任务与发布', barChart(METRICS['7d'].delivery, METRICS['7d'].labels),
-          '<button class="card-link" type="button" data-action="nav" data-route="#/observability">查看观测</button>')}
-        ${card('待处理', '需要你关注的事项', `<div class="pending-list">${pending.map((item) => `
-          <div class="pending-item" data-action="nav" data-route="${item.route}" tabindex="0" role="button">
-            <span class="pending-icon" style="background:${item.tone === 'danger' ? '#fee2e2' : '#fef3c7'};color:${item.tone === 'danger' ? '#b91c1c' : '#b45309'}">${icon(item.icon, 14)}</span>
-            <span class="pending-copy"><b>${esc(item.title)}</b><small>${esc(item.desc)}</small></span>
-            ${pill(item.pill)}
-          </div>`).join('')}</div>`, '<button class="card-link" type="button" data-action="nav" data-route="#/agents">全部任务</button>')}
-      </div>
-      <div class="section-row" style="margin:20px 0 12px;">
-        <div><div class="section-title">项目空间</div><div class="section-sub">共 ${PROJECTS.length} 个项目 · 当前 ${esc(project.name)}</div></div>
-        <button class="btn btn-outline btn-sm" type="button" data-action="new-project">${icon('plus', 14)} 新建项目</button>
-      </div>
-      <div class="project-grid">
+      ${pageHead('项目空间', hasProjects ? `共 ${PROJECTS.length} 个项目，选择项目进入或创建新项目。` : '创建第一个项目，开始需求、Agent 与发布交付。', `<button class="btn btn-primary" type="button" data-action="new-project">${icon('plus', 14)} 新建项目</button>`)}
+      ${hasProjects ? `<div class="project-grid">
         ${PROJECTS.map((item) => projectCard(item)).join('')}
         <button class="project-new-card" type="button" data-action="new-project">
           <span class="project-new-icon">${icon('plus', 20)}</span>
           <b>新建项目</b>
           <small>初始化项目空间、首个迭代与项目成员</small>
         </button>
-      </div>
-      <section class="card" style="margin-top:16px;">
-        <div class="card-head"><div><div class="card-title">最近发布</div><div class="card-sub">按迭代批次发布</div></div><div class="card-actions"><button class="card-link" type="button" data-action="nav" data-route="#/releases">查看全部</button></div></div>
-        <div class="card-body" style="padding-top:12px;">
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>发布批次</th><th>迭代</th><th>应用</th><th>状态</th><th>时间</th><th></th></tr></thead>
-              <tbody>
-                ${history.map((release) => {
-                  const iteration = iterationById(release.iterationId);
-                  return `<tr class="row-click" data-action="nav" data-route="#/releases">
-                    <td><div class="cell-main"><b>${esc(release.version)}</b><small>${esc(release.id)}</small></div></td>
-                    <td>${esc(iteration ? iteration.name : '—')}</td>
-                    <td>${esc(release.apps)}</td>
-                    <td>${pill(release.status)}</td>
-                    <td class="nowrap">${esc(release.time)}</td>
-                    <td><span class="muted">→</span></td>
-                  </tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      </div>` : `<div class="empty">
+        <div class="empty-icon">${icon('grid', 30)}</div>
+        <h2>还没有项目</h2>
+        <p>创建第一个项目，初始化项目空间、首个迭代与项目成员。</p>
+        <button class="btn btn-primary" type="button" data-action="new-project">${icon('plus', 14)} 新建项目</button>
+      </div>`}
     `;
   }
 
@@ -1532,7 +1444,7 @@ func Next(state State, picked bool) State {
     const iteration = iterationById(project.iterationId);
     const stats = iteration ? iterationStats(iteration.id) : { total: 0, ready: 0, deferred: 0, blocked: 0 };
     const progressValue = stats.total ? Math.round((stats.ready / stats.total) * 100) : 0;
-    return `<article class="card project-card" data-action="open-project" data-id="${project.id}" tabindex="0" role="button">
+    return `<article class="card project-card" data-action="open-project" data-id="${project.id}">
       <div class="project-card-head">
         <span class="project-avatar" style="background:${project.color}1a;color:${project.color}">${esc(project.code.slice(0, 2))}</span>
         <div><b>${esc(project.name)}</b><small>${esc(project.code)} · ${esc(project.owner)}</small></div>
@@ -1547,7 +1459,14 @@ func Next(state State, picked bool) State {
         <span>阻塞 <b>${stats.blocked}</b></span>
         <span style="margin-left:auto;color:#10b981;">●</span>
       </div>
-      <div class="project-card-footer"><span class="tag">${icon('bot', 11)} ${project.members.length} 名成员</span><span style="margin-left:auto;color:#0284c7;font-size:11px;font-weight:700;">进入项目 →</span></div>
+      <div class="project-card-meta">
+        <span>${icon('clock', 11)} 创建于 ${esc(project.createdAt || '—')}</span>
+        <span>${icon('users', 11)} ${project.members.length} 名成员</span>
+      </div>
+      <div class="project-card-footer">
+        <button class="project-card-open" type="button" data-action="open-project" data-id="${project.id}">进入项目 →</button>
+        <button class="btn btn-ghost btn-xs project-card-release" type="button" data-action="release-project" data-id="${project.id}">${icon('trash', 12)} 释放项目</button>
+      </div>
     </article>`;
   }
 
@@ -2483,92 +2402,6 @@ func Next(state State, picked bool) State {
     `;
   }
 
-  /* ---------------- pages: releases ---------------- */
-  function renderReleases() {
-    const project = currentProject();
-    if (project.id !== 'p-order') {
-      const iteration = currentIteration();
-      const stats = iterationStats(iteration.id);
-      return `
-        ${pageHead('批次发布', `项目：${esc(project.name)} · ${esc(iteration.name)}`, `<button class="btn btn-outline" type="button" data-action="release-gate">${icon('rocket', 14)} 发起发布</button>`)}
-        <div class="empty">
-          <div class="empty-icon">${icon('rocket', 30)}</div>
-          <h2>当前项目还没有批次发布</h2>
-          <p>${esc(iteration.goal)}。该迭代有 ${stats.ready} 个需求就绪、${stats.deferred} 个延期、${stats.blocked} 个未就绪。</p>
-          <button class="btn btn-primary" type="button" data-action="release-gate">检查发布门禁</button>
-        </div>`;
-    }
-    const rel = state.release;
-    const approved = !!rel.approvedBy;
-    const failed = ['PARTIALLY_FAILED', 'FAILED'].includes(rel.status);
-    const steps = [
-      { label: '审批', state: approved ? 'done' : 'active' },
-      { label: '发布', state: rel.status === 'RELEASING' ? 'active' : ['SUCCEEDED', 'PARTIALLY_FAILED', 'FAILED', 'ROLLED_BACK', 'PARTIALLY_ROLLED_BACK'].includes(rel.status) ? 'done' : '' },
-      { label: '完成', state: rel.status === 'SUCCEEDED' ? 'done' : failed ? 'failed' : '' }
-    ];
-    let primary = '';
-    if (rel.status === 'PENDING_APPROVAL') primary = `<button class="btn btn-primary" type="button" data-action="approve-release">${icon('check', 14)} 审批通过</button>`;
-    else if (rel.status === 'APPROVED') primary = `<button class="btn btn-primary" type="button" data-action="start-release" ${rel.simulating ? 'disabled' : ''}>${icon('play', 14)} ${rel.simulating ? '发布中...' : '开始发布'}</button>`;
-    else if (failed) primary = `<button class="btn btn-primary" type="button" data-action="retry-release" ${rel.simulating ? 'disabled' : ''}>${icon('rotate', 14)} ${rel.simulating ? '重试中...' : '重试失败项'}</button>`;
-    return `
-      ${pageHead('批次发布', `项目：${esc(project.name)} · 迭代 ${esc(iterationById(rel.iterationId)?.name || '')}`, `
-        <button class="btn btn-outline" type="button" data-action="reset-release">${icon('refresh', 14)} 重置演示</button>
-        ${primary}`)}
-      <div class="release-hero">
-        <section class="card release-summary">
-          <div class="release-title"><h3>${esc(rel.version)} 批次发布</h3>${pill(rel.status)}<span class="tag">${esc(rel.id)}</span></div>
-          <div class="release-meta">
-            <div><div class="meta-label">发起人</div><div class="meta-value">${esc(rel.requestedBy)}</div></div>
-            <div><div class="meta-label">审批人</div><div class="meta-value">${esc(rel.approvedBy || '待审批')}</div></div>
-            <div><div class="meta-label">创建时间</div><div class="meta-value">${esc(rel.createdAt)}</div></div>
-            <div><div class="meta-label">发布时间</div><div class="meta-value">${esc(rel.startedAt || '—')}</div></div>
-          </div>
-          <div class="stepper">
-            ${steps.map((step, index) => `<div class="step ${step.state}"><span class="step-dot">${step.state === 'done' ? icon('check', 12) : step.state === 'failed' ? '!' : index + 1}</span><span class="step-label">${step.label}</span></div>${index < steps.length - 1 ? '<span class="step-line"></span>' : ''}`).join('')}
-          </div>
-          <div class="divider"></div>
-          <div class="release-note"><b>发布说明</b><br>${esc(rel.notes)}<br><span class="faint">审批绑定当前 digest 集合；任一 digest 变化需重新审批。</span></div>
-        </section>
-        <section class="card">
-          <div class="card-head"><div><div class="card-title">发布门禁</div><div class="card-sub">全部通过才能开始</div></div><div class="card-actions">${pill(rel.status)}</div></div>
-          <div class="card-body">
-            <div class="gate-list">
-              <div class="gate-item ok"><span class="gate-icon">${icon('check', 12)}</span><div><b>需求就绪 ${rel.gate.ready}/6</b><small>${rel.gate.deferred} 个需求已延期，不计入本次发布</small></div></div>
-              <div class="gate-item ${rel.gate.signed ? 'ok' : 'bad'}"><span class="gate-icon">${icon(rel.gate.signed ? 'check' : 'alert', 12)}</span><div><b>镜像签名 4/4</b><small>cosign 签名已验证</small></div></div>
-              <div class="gate-item ${rel.gate.sbom ? 'ok' : 'bad'}"><span class="gate-icon">${icon(rel.gate.sbom ? 'check' : 'alert', 12)}</span><div><b>SBOM 4/4</b><small>CycloneDX 已生成</small></div></div>
-              <div class="gate-item ${rel.gate.test ? 'ok' : 'bad'}"><span class="gate-icon">${icon(rel.gate.test ? 'check' : 'alert', 12)}</span><div><b>test 验证 4/4</b><small>冒烟与 E2E 通过</small></div></div>
-            </div>
-            <div class="divider"></div>
-            <div class="flex"><span class="muted" style="font-size:10.5px;">协调批次：失败停止后续，已部署项保留。</span><button class="card-link" type="button" data-action="release-logs" data-id="ri-3">查看日志</button></div>
-          </div>
-        </section>
-      </div>
-      <section class="card">
-        <div class="card-head"><div><div class="card-title">应用发布项</div><div class="card-sub">按 order 顺序部署 prod；失败项可同 digest 重试或逐项回滚</div></div><div class="card-actions">${rel.items.filter((item) => item.status === 'SUCCEEDED').length}/${rel.items.length} 成功</div></div>
-        <div class="card-body" style="padding-top:12px;">
-          <div class="table-wrap"><table>
-            <thead><tr><th>顺序</th><th>应用</th><th>镜像 digest</th><th>Commit</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
-            <tbody>
-              ${rel.items.map((item) => `<tr>
-                <td><span class="release-order">${item.order}</span></td>
-                <td><div class="cell-main"><b>${esc(item.app)}</b><small>${esc(item.env)}</small></div></td>
-                <td><span class="release-digest">${esc(item.digest)}</span></td>
-                <td><span class="release-digest">${esc(item.commit)}</span></td>
-                <td>${pill(item.status)}${item.failure ? `<div class="form-error" style="margin-top:4px;">${esc(item.failure)}</div>` : ''}</td>
-                <td class="nowrap">${esc(item.deployedAt || '—')}</td>
-                <td><div class="release-actions">
-                  <button class="btn btn-ghost btn-xs" type="button" data-action="release-logs" data-id="${item.id}">日志</button>
-                  ${item.status === 'SUCCEEDED' ? `<button class="btn btn-ghost btn-xs" type="button" data-action="rollback-item" data-id="${item.id}">回滚</button>` : ''}
-                  ${item.status === 'FAILED' ? `<button class="btn btn-ghost btn-xs" type="button" data-action="retry-release">重试</button>` : ''}
-                </div></td>
-              </tr>`).join('')}
-            </tbody>
-          </table></div>
-        </div>
-      </section>
-    `;
-  }
-
   /* ---------------- pages: runtime ---------------- */
   function renderRuntime() {
     const apps = projectApps(state.projectId);
@@ -2588,7 +2421,7 @@ func Next(state State, picked bool) State {
         ${kpi('运行 Pod', String(podCount), '按应用统计', { icon: 'server' })}
         ${kpi('今日部署', '3', '最近一次 10:14', { icon: 'rocket' })}
       </div>
-      ${visible.length ? `<div class="grid grid-2">${visible.map((app) => appCard(app, app.envs[state.env])).join('')}</div>` : `<div class="empty"><div class="empty-icon">${icon('server', 30)}</div><h2>${state.env === 'prod' ? '当前项目还没有 prod 应用' : '当前项目还没有 test 应用'}</h2><p>切换到 ${state.env === 'prod' ? 'test' : 'prod'} 查看其他环境，或先通过批次发布创建应用。</p><button class="btn btn-primary" type="button" data-action="env-switch" data-env="${state.env === 'prod' ? 'test' : 'prod'}">切换到 ${state.env === 'prod' ? 'test' : 'prod'}</button></div>`}
+      ${visible.length ? `<div class="grid grid-2">${visible.map((app) => appCard(app, app.envs[state.env])).join('')}</div>` : `<div class="empty"><div class="empty-icon">${icon('server', 30)}</div><h2>${state.env === 'prod' ? '当前项目还没有 prod 应用' : '当前项目还没有 test 应用'}</h2><p>切换到 ${state.env === 'prod' ? 'test' : 'prod'} 查看其他环境，或先创建应用。</p><button class="btn btn-primary" type="button" data-action="env-switch" data-env="${state.env === 'prod' ? 'test' : 'prod'}">切换到 ${state.env === 'prod' ? 'test' : 'prod'}</button></div>`}
     `;
   }
 
@@ -2659,7 +2492,7 @@ func Next(state State, picked bool) State {
         ${card('Agent 成功率', '近 7 天任务质量', lineChart(metrics.agent, metrics.labels, '#0ea5e9'), '<span class="card-link">SLO 95%</span>')}
         ${card('LLM Token 消耗', '单位：百万 token', barChart(metrics.tokens, metrics.labels, { soft: true }), '<span class="card-link">成本 ¥126.40</span>')}
         <section class="card">
-          <div class="card-head"><div><div class="card-title">发布成功率</div><div class="card-sub">近 7 天批次发布</div></div></div>
+          <div class="card-head"><div><div class="card-title">发布成功率</div><div class="card-sub">近 7 天发布</div></div></div>
           <div class="card-body">
             <div class="donut-wrap">
               <div class="donut"><div class="donut-value"><b>78%</b><small>成功</small></div></div>
@@ -2938,7 +2771,7 @@ func Next(state State, picked bool) State {
       ${card('最近平台发布', '平台自身版本', `<div class="table-wrap"><table>
         <thead><tr><th>版本</th><th>时间</th><th>状态</th><th>负责人</th><th>说明</th></tr></thead>
         <tbody>
-          <tr><td><b>v1.8.2</b></td><td>2026-10-24 10:00</td><td>${pill('金丝雀 10%')}</td><td>刘洋</td><td>导航入口配置、迭代批次发布改进</td></tr>
+          <tr><td><b>v1.8.2</b></td><td>2026-10-24 10:00</td><td>${pill('金丝雀 10%')}</td><td>刘洋</td><td>导航入口配置、迭代发布改进</td></tr>
           <tr><td><b>v1.8.1</b></td><td>2026-10-18 15:20</td><td>${pill('成功')}</td><td>刘洋</td><td>MCP 热加载性能优化</td></tr>
           <tr><td><b>v1.8.0</b></td><td>2026-10-12 11:00</td><td>${pill('成功')}</td><td>刘洋</td><td>能力中心 2.0</td></tr>
         </tbody>
@@ -2952,7 +2785,7 @@ func Next(state State, picked bool) State {
       <div class="empty-badge">占位模块</div>
       <div class="empty-icon">${icon(meta.module === 'workspace' ? 'grid' : meta.module === 'app-center' ? 'cube' : 'file', 30)}</div>
       <h2>${esc(label)}模块建设中</h2>
-      <p>该模块暂未开放。当前演示请进入项目空间，体验需求、迭代、Agent、流水线与批次发布。</p>
+      <p>该模块暂未开放。当前演示请进入项目空间，体验需求、迭代、Agent 与流水线。</p>
       <button class="btn btn-primary" type="button" data-action="nav" data-route="#/projects">进入项目空间</button>
     </div>`;
   }
@@ -3035,6 +2868,7 @@ func Next(state State, picked bool) State {
       <div class="avatar-head"><span class="avatar">张</span><div><b>张明</b><small>项目 Owner · 订单中心</small></div></div>
       <button class="menu-item" type="button" data-action="profile">${icon('users', 14)} 个人设置</button>
       <button class="menu-item" type="button" data-action="toast" data-msg="偏好设置为演示占位">${icon('settings', 14)} 偏好设置</button>
+      <button class="menu-item" type="button" data-action="open-nav-config">${icon('admin', 14)} 平台设置</button>
       <button class="menu-item" type="button" data-action="nav" data-route="#/admin/audit">${icon('audit', 14)} 审计日志</button>
       <button class="menu-item danger" type="button" data-action="logout">${icon('external', 14)} 退出登录</button>`;
   }
@@ -3342,37 +3176,6 @@ func Next(state State, picked bool) State {
     });
   }
 
-  function openReleaseGate() {
-    const iteration = currentIteration();
-    const rel = state.release;
-    if (rel.iterationId === iteration.id && !['SUCCEEDED', 'FAILED', 'ROLLED_BACK', 'PARTIALLY_ROLLED_BACK'].includes(rel.status)) {
-      openPanel({
-        title: '已有进行中的发布', sub: `${rel.id} · ${rel.version}`, variant: 'modal',
-        body: `<div class="release-note"><b>当前状态：${esc(rel.status)}</b><br>该迭代已创建批次发布，请先处理现有发布，避免重复部署。</div>`,
-        footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="button" data-action="goto-releases">查看发布</button>`
-      });
-      return;
-    }
-    const blockers = iterationRequirements(iteration.id).filter((item) => !item.ready && !item.deferredTo);
-    if (blockers.length) {
-      openPanel({
-        title: '发布门禁未通过', sub: `${iteration.name} · ${blockers.length} 个需求未就绪`, variant: 'modal',
-        body: `<div class="gate-list">${blockers.map((item) => `<div class="gate-item bad"><span class="gate-icon">${icon('alert', 12)}</span><div><b>${esc(item.title)}</b><small>${esc(item.id)} · ${esc(item.status)} · ${esc(item.owner)}</small></div></div>`).join('')}</div><div class="form-hint" style="margin-top:12px;">先完成需求，或显式延期后再发起发布。</div>`,
-        footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="button" data-action="focus-blockers">去处理</button>`
-      });
-      return;
-    }
-    openPanel({
-      title: '发布门禁通过', sub: `${iteration.name} · 所有未延期需求已就绪`, variant: 'modal',
-      body: `<div class="gate-list">
-        <div class="gate-item ok"><span class="gate-icon">${icon('check', 12)}</span><div><b>需求就绪</b><small>${iterationStats(iteration.id).ready} 个需求 ready</small></div></div>
-        <div class="gate-item ok"><span class="gate-icon">${icon('check', 12)}</span><div><b>镜像与 SBOM</b><small>签名验证通过</small></div></div>
-        <div class="gate-item ok"><span class="gate-icon">${icon('check', 12)}</span><div><b>test 验证</b><small>冒烟与 E2E 通过</small></div></div>
-      </div><div class="form-hint" style="margin-top:12px;">下一步将创建批次发布并进入人工审批。</div>`,
-      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="button" data-action="goto-releases">前往批次发布</button>`
-    });
-  }
-
   function openTaskDrawer(id) {
     const task = taskById(id);
     if (!task) return;
@@ -3512,7 +3315,7 @@ func Next(state State, picked bool) State {
         <div class="meta-item"><div class="meta-label">最近登录</div><div class="meta-value">${esc(user.lastLogin)}</div></div>
       </div></div>
       <div class="drawer-section"><div class="drawer-section-title">最近活动</div><div class="activity-list">
-        <div class="activity-item"><span class="activity-icon">${icon('check', 12)}</span><div class="activity-copy"><b>审批了批次发布 ${esc(state.release.version)}</b><small>10:21 · 订单中心</small></div></div>
+        <div class="activity-item"><span class="activity-icon">${icon('check', 12)}</span><div class="activity-copy"><b>审批了发布 v2.4</b><small>10:21 · 订单中心</small></div></div>
         <div class="activity-item"><span class="activity-icon">${icon('layers', 12)}</span><div class="activity-copy"><b>更新了需求 RQ-101</b><small>09:48 · 订单中心</small></div></div>
       </div></div>
     `;
@@ -3543,8 +3346,8 @@ func Next(state State, picked bool) State {
       <button class="config-order" type="button" data-action="move-nav" data-id="${item.id}" data-dir="1" ${index === state.navConfig.length - 1 ? 'disabled' : ''}>↓</button>
     </div>`).join('');
     openPanel({
-      title: '配置入口', sub: '控制顶部导航的显隐与顺序；隐藏模块不会删除路由', variant: 'modal',
-      body: `<div class="config-list">${rows}</div><p class="hint">当前演示包含 6 个入口，其中工作台、应用中心、原始需求为占位模块。</p>`,
+      title: '平台设置', sub: '控制顶部导航的显隐与顺序；隐藏模块不会删除路由', variant: 'modal',
+      body: `<div class="config-list">${rows}</div><p class="hint">当前演示包含 5 个入口，其中工作台、应用中心、原始需求为占位模块。</p>`,
       footer: `<button class="btn btn-outline" type="button" data-action="reset-nav">恢复默认</button><button class="btn btn-primary" type="button" data-action="save-nav">保存配置</button>`
     });
   }
@@ -3557,7 +3360,7 @@ func Next(state State, picked bool) State {
         <span class="project-option-meta"><b>${esc(project.name)}</b><small>${esc(project.code)} · ${esc(project.owner)} · ${esc(project.status)}</small></span>
         ${pill(project.status)}
       </button>`).join('')}</div>`,
-      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">关闭</button><button class="btn btn-primary" type="button" data-action="new-project">${icon('plus', 14)} 新建项目</button>`
+      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">关闭</button>`
     });
   }
 
@@ -3655,7 +3458,7 @@ func Next(state State, picked bool) State {
           <div class="field"><label for="release-end">结束时间</label><input id="release-end" name="endAt" class="input" type="datetime-local" value="2026-10-24T23:00" required></div>
         </div>
         <div class="field"><label>关联需求</label><div class="release-req-options">${checklist}</div><div class="form-hint">仅显示当前迭代未延期且未关联其他发布的需求；至少选择 1 个。</div></div>
-        <div class="form-hint">发布状态按时间段自动推导。发布管理仅用于排期，实际发布执行请前往批次发布。</div>
+        <div class="form-hint">发布状态按时间段自动推导；发布管理仅用于排期。</div>
         <div class="btn-row" style="justify-content:flex-end;margin-top:18px;"><button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="submit" ${candidates.length ? '' : 'disabled'}>创建发布</button></div>
       </form>`
     });
@@ -3687,7 +3490,7 @@ func Next(state State, picked bool) State {
         </tr>`).join('') : '<tr><td colspan="5">暂无关联需求</td></tr>'}</tbody>
       </table></div>
     </div>
-    <p class="hint">发布管理仅用于排期，实际发布执行请在「批次发布」中完成。</p>`;
+    <p class="hint">发布管理仅用于排期。</p>`;
     openPanel({ title: release.name, sub: `${release.id} · ${iteration?.name || ''} · 发布排期`, body, extraWide: true });
   }
 
@@ -3721,20 +3524,6 @@ func Next(state State, picked bool) State {
     });
   }
 
-  function openApprovalForm() {
-    const rel = state.release;
-    openPanel({
-      title: '审批批次发布', sub: `${rel.version} · 绑定当前 digest 集合`, variant: 'modal',
-      body: `<form id="approve-form" data-form="approve-release">
-        <div class="release-note" style="margin-bottom:14px;"><b>发布项</b><br>${rel.items.map((item) => `${esc(item.order)}. ${esc(item.app)} · ${esc(item.digest)}`).join('<br>')}</div>
-        <div class="field"><label for="approve-user">审批人</label><select id="approve-user" name="approver" class="select" required><option value="李娜">李娜 · 项目 Owner</option><option value="赵敏">赵敏 · 审计员</option></select></div>
-        <label class="checkbox"><input type="checkbox" name="confirm" required> 我确认审批绑定当前 digest 集合；任一 digest 变化需重新审批。</label>
-        <div class="form-hint">发起人不得自批；高风险应用需要双人审批。</div>
-        <div class="btn-row" style="justify-content:flex-end;margin-top:18px;"><button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="submit">确认审批</button></div>
-      </form>`
-    });
-  }
-
   function openNewUserForm() {
     openPanel({
       title: '新增用户', sub: '平台自建虚拟账号 · 一人一号', variant: 'modal',
@@ -3761,119 +3550,6 @@ func Next(state State, picked bool) State {
     });
   }
 
-  /* ---------------- release actions ---------------- */
-  async function startRelease() {
-    const rel = state.release;
-    if (rel.status !== 'APPROVED' || rel.simulating) return;
-    rel.simulating = true;
-    rel.status = 'RELEASING';
-    rel.startedAt = `${nowDate()} ${nowTime()}`;
-    renderMain();
-    for (const item of rel.items) {
-      item.status = 'DEPLOYING';
-      renderMain();
-      await wait(700);
-      if (item.order === 3) {
-        item.status = 'FAILED';
-        item.failure = '冒烟测试失败：/healthz 超时（30s）';
-        item.deployedAt = `${nowDate()} ${nowTime()}`;
-        rel.items.filter((other) => other.order > item.order && other.status === 'PENDING').forEach((other) => { other.status = 'BLOCKED'; });
-        rel.status = 'PARTIALLY_FAILED';
-        rel.finishedAt = `${nowDate()} ${nowTime()}`;
-        rel.simulating = false;
-        renderMain();
-        toast('order-worker 冒烟失败，后续发布项已停止；已部署项保留。', 'error', '批次发布部分失败');
-        audit('批次发布部分失败', rel.id, '失败', { failed: item.app, status: rel.status });
-        return;
-      }
-      item.status = 'SUCCEEDED';
-      item.deployedAt = `${nowDate()} ${nowTime()}`;
-      renderMain();
-      await wait(420);
-    }
-    rel.status = 'SUCCEEDED';
-    rel.finishedAt = `${nowDate()} ${nowTime()}`;
-    rel.simulating = false;
-    renderMain();
-    toast('所有应用发布成功。', 'success', '批次发布完成');
-    audit('批次发布成功', rel.id, '成功', { status: rel.status });
-  }
-
-  async function retryRelease() {
-    const rel = state.release;
-    if (!['PARTIALLY_FAILED', 'FAILED'].includes(rel.status) || rel.simulating) return;
-    rel.simulating = true;
-    rel.status = 'RELEASING';
-    renderMain();
-    const failed = rel.items.find((item) => item.status === 'FAILED');
-    if (failed) {
-      failed.status = 'DEPLOYING';
-      failed.failure = null;
-      renderMain();
-      await wait(700);
-      failed.status = 'SUCCEEDED';
-      failed.deployedAt = `${nowDate()} ${nowTime()}`;
-      renderMain();
-    }
-    const blocked = rel.items.filter((item) => item.status === 'BLOCKED');
-    for (const item of blocked) {
-      item.status = 'DEPLOYING';
-      renderMain();
-      await wait(600);
-      item.status = 'SUCCEEDED';
-      item.deployedAt = `${nowDate()} ${nowTime()}`;
-      renderMain();
-    }
-    rel.status = 'SUCCEEDED';
-    rel.finishedAt = `${nowDate()} ${nowTime()}`;
-    rel.simulating = false;
-    renderMain();
-    toast('失败项已重试，后续发布项已继续。', 'success', '发布恢复');
-    audit('重试批次发布', rel.id, '成功', { status: rel.status });
-  }
-
-  function openRollbackConfirm(itemId) {
-    const item = state.release.items.find((entry) => entry.id === itemId);
-    if (!item) return;
-    openPanel({
-      title: '回滚发布项', sub: `${item.app} · ${item.digest}`, variant: 'modal',
-      body: `<div class="release-note"><b>回滚不会影响其他已部署应用。</b><br>将 ${esc(item.app)} 回滚到上一版本，并写审计。确认继续？</div>`,
-      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-danger" type="button" data-action="confirm-rollback" data-id="${item.id}">确认回滚</button>`
-    });
-  }
-
-  function confirmRollback(itemId) {
-    const item = state.release.items.find((entry) => entry.id === itemId);
-    if (!item) return;
-    item.status = 'ROLLED_BACK';
-    item.failure = '人工回滚';
-    const allRolledBack = state.release.items.every((entry) => entry.status === 'ROLLED_BACK');
-    state.release.status = allRolledBack ? 'ROLLED_BACK' : 'PARTIALLY_ROLLED_BACK';
-    closeOverlay();
-    renderMain();
-    toast(`${item.app} 已回滚；其他应用保持当前版本。`, 'success', '回滚完成');
-    audit('回滚发布项', `${state.release.id}/${item.app}`, '成功', { status: item.status });
-  }
-
-  function openReleaseLogs(itemId) {
-    const item = state.release.items.find((entry) => entry.id === itemId);
-    if (!item) return;
-    const logs = item.status === 'FAILED'
-      ? `[deploy] applying image ${item.digest}\n[deploy] rollout status: waiting for order-worker...\n[deploy] pod order-worker-7d9f started\n[smoke] GET /healthz -> timeout after 30s\n[deploy] release halted; remaining items blocked\n[audit] failure recorded by CICD`
-      : `[deploy] applying image ${item.digest}\n[deploy] rollout status: success\n[smoke] GET /healthz -> 200\n[audit] deployment recorded by Argo CD`;
-    openPanel({
-      title: `发布日志 · ${item.app}`, sub: `${item.order}. ${item.app} · ${item.status}`,
-      body: `<div class="log-block">${esc(logs)}</div>`,
-      footer: `<button class="btn btn-primary" type="button" data-action="close-overlay">关闭</button>`
-    });
-  }
-
-  function resetRelease() {
-    state.release = freshRelease();
-    renderMain();
-    toast('批次发布演示已重置为待审批状态。', 'info', '已重置');
-  }
-
   /* ---------------- events ---------------- */
   function bindEvents() {
     document.addEventListener('click', (event) => {
@@ -3888,7 +3564,7 @@ func Next(state State, picked bool) State {
           return;
         }
         if (action === 'close-overlay') { closeOverlay(); return; }
-        if (action === 'open-nav-config') { openConfigDrawer(); return; }
+        if (action === 'open-nav-config') { closeDropdowns(); openConfigDrawer(); return; }
         if (action === 'save-nav') { closeOverlay(); toast('入口配置已保存（演示）。', 'success'); return; }
         if (action === 'reset-nav') { state.navConfig = DEFAULT_NAV.map((item) => ({ ...item })); renderTopbar(); openConfigDrawer(); toast('已恢复默认入口。', 'info'); return; }
         if (action === 'move-nav') { moveNav(id, Number(target.dataset.dir)); return; }
@@ -3904,6 +3580,8 @@ func Next(state State, picked bool) State {
         if (action === 'switch-project') { switchProject(id); return; }
         if (action === 'open-project') { openProject(id); return; }
         if (action === 'new-project') { openProjectForm(); return; }
+        if (action === 'release-project') { openReleaseProject(id); return; }
+        if (action === 'confirm-release-project') { confirmReleaseProject(id); return; }
         if (action === 'add-member') { openMemberForm(); return; }
         if (action === 'members-page') { state.membersPage = Number(target.dataset.page) || 1; renderMain(); return; }
         if (action === 'remove-member') { openRemoveMember(id); return; }
@@ -3920,9 +3598,6 @@ func Next(state State, picked bool) State {
         if (action === 'add-req-comment') { addRequirementComment(id); return; }
         if (action === 'req-detail-tab') { switchRequirementDetailTab(target.dataset.tab); return; }
         if (action === 'defer-req') { openDeferForm(id); return; }
-        if (action === 'release-gate') { openReleaseGate(); return; }
-        if (action === 'focus-blockers') { closeOverlay(); state.reqTab = 'list'; resetRequirementFilters(); renderMain(); return; }
-        if (action === 'goto-releases') { closeOverlay(); navigate('#/releases'); return; }
         if (action === 'task-filter') { state.taskFilter = target.dataset.filter; renderMain(); return; }
         if (action === 'open-repo') { openRepoPage(id); return; }
         if (action === 'repo-tab') { state.repoTab = target.dataset.tab; renderMain(); return; }
@@ -3951,13 +3626,6 @@ func Next(state State, picked bool) State {
         if (action === 'open-run') { openPipelineDrawer(id); return; }
         if (action === 'rerun-pipeline') { rerunPipeline(id); return; }
         if (action === 'run-pipeline') { openPipelineForm(); return; }
-        if (action === 'approve-release') { openApprovalForm(); return; }
-        if (action === 'start-release') { startRelease(); return; }
-        if (action === 'retry-release') { retryRelease(); return; }
-        if (action === 'rollback-item') { openRollbackConfirm(id); return; }
-        if (action === 'confirm-rollback') { confirmRollback(id); return; }
-        if (action === 'release-logs') { openReleaseLogs(id); return; }
-        if (action === 'reset-release') { resetRelease(); return; }
         if (action === 'env-switch') { state.env = target.dataset.env; renderMain(); return; }
         if (action === 'open-app') { openAppDrawer(id); return; }
         if (action === 'open-url') { const app = appById(id); if (app) toast(app.envs[state.env]?.url || '演示地址', 'info', '统一域名'); return; }
@@ -4031,7 +3699,6 @@ func Next(state State, picked bool) State {
       else if (type === 'new-release') submitRelease(form);
       else if (type === 'repo-settings') submitRepoSettings(form);
       else if (type === 'run-pipeline') submitPipeline(form);
-      else if (type === 'approve-release') submitApproval(form);
       else if (type === 'mcp-test') submitMcpTest(form);
       else if (type === 'new-user') submitUser(form);
       else if (type === 'quota') { closeOverlay(); toast('配额已更新（演示）。', 'success'); audit('调整项目配额', form.querySelector('[name="cpu"]')?.value || 'quota', '成功'); renderMain(); }
@@ -4136,6 +3803,72 @@ func Next(state State, picked bool) State {
     resetRequirementFilters();
     state.membersPage = 1;
     navigate('#/requirements');
+  }
+
+  function openReleaseProject(id) {
+    const project = projectById(id);
+    if (!project) return;
+    const iterationCount = ITERATIONS.filter((item) => item.projectId === id).length;
+    const requirementCount = REQUIREMENTS.filter((item) => item.projectId === id).length;
+    const repoCount = REPOS.filter((item) => item.projectId === id).length;
+    openPanel({
+      title: '释放项目', sub: `${esc(project.name)} · ${esc(project.code)}`, variant: 'modal',
+      body: `<div class="release-note"><b>释放后项目将被删除，且无法恢复。</b><br>将同时清理 ${iterationCount} 个迭代、${requirementCount} 条需求、${repoCount} 个代码仓，以及关联的 Agent 任务、应用、流水线与发布排期。</div>`,
+      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-danger" type="button" data-action="confirm-release-project" data-id="${project.id}">确认释放</button>`
+    });
+  }
+
+  function removeProjectData(project) {
+    const projectId = project.id;
+    const requirementIds = new Set(REQUIREMENTS.filter((item) => item.projectId === projectId).map((item) => item.id));
+    const appIds = new Set(APPS.filter((item) => item.projectId === projectId).map((item) => item.id));
+    const repoIds = new Set(REPOS.filter((item) => item.projectId === projectId).map((item) => item.id));
+    const iterationIds = new Set(ITERATIONS.filter((item) => item.projectId === projectId).map((item) => item.id));
+    const purge = (list, predicate) => {
+      for (let index = list.length - 1; index >= 0; index -= 1) {
+        if (predicate(list[index])) list.splice(index, 1);
+      }
+    };
+    purge(PROJECTS, (item) => item.id === projectId);
+    purge(ITERATIONS, (item) => item.projectId === projectId);
+    purge(REQUIREMENTS, (item) => item.projectId === projectId);
+    REQUIREMENTS.forEach((item) => { if (iterationIds.has(item.deferredTo)) item.deferredTo = 'backlog'; });
+    purge(REQUIREMENT_COMMENTS, (item) => requirementIds.has(item.requirementId));
+    purge(REQUIREMENT_HISTORY, (item) => requirementIds.has(item.requirementId));
+    purge(TASKS, (item) => item.projectId === projectId);
+    purge(RELEASES, (item) => item.projectId === projectId);
+    purge(APPS, (item) => item.projectId === projectId);
+    purge(PIPELINES, (item) => item.projectId === projectId || appIds.has(item.appId));
+    purge(ALERTS, (item) => item.projectId === projectId);
+    purge(REPOS, (item) => item.projectId === projectId);
+    repoIds.forEach((repoId) => {
+      delete REPO_BRANCHES[repoId];
+      delete REPO_FILES[repoId];
+    });
+    purge(DOCS, (item) => item.projectId === projectId);
+    purge(MRS, (item) => item.projectId === projectId);
+    purge(QUOTAS, (item) => item.projectId === projectId);
+    USERS.forEach((user) => removeUserFromProjectList(user, project.name));
+  }
+
+  function confirmReleaseProject(id) {
+    const project = projectById(id);
+    if (!project) return;
+    const { name, code } = project;
+    const wasCurrent = state.projectId === id;
+    removeProjectData(project);
+    if (state.obsProject === id) state.obsProject = 'all';
+    if (wasCurrent) {
+      const next = PROJECTS[0];
+      state.projectId = next ? next.id : null;
+      state.iterationId = next ? next.iterationId : null;
+      resetRequirementFilters();
+      state.membersPage = 1;
+    }
+    closeOverlay();
+    render();
+    audit('释放项目', `project:${code}`, '成功', { before: { name, code } });
+    toast(`项目 ${name} 已释放。`, 'success', '项目已释放');
   }
 
   function approveTask(id) {
@@ -4652,19 +4385,6 @@ func Next(state State, picked bool) State {
       run.logs += `\n[${nowTime()}] build completed\n[${nowTime()}] tests passed\n[${nowTime()}] image signed\n[${nowTime()}] deploy test succeeded\n[${nowTime()}] smoke passed`;
       if (state.route === '#/pipelines') renderMain();
     }, 2600);
-  }
-
-  function submitApproval(form) {
-    const data = new FormData(form);
-    const approver = String(data.get('approver') || '');
-    const confirmed = data.get('confirm');
-    if (!confirmed) { toast('请确认审批绑定 digest 集合。', 'warning'); return; }
-    state.release.status = 'APPROVED';
-    state.release.approvedBy = approver;
-    audit('审批批次发布', state.release.id, '成功', { approver, after: { status: 'APPROVED' } });
-    closeOverlay();
-    renderMain();
-    toast(`${approver} 已审批 ${state.release.version} 批次发布，可以开始发布。`, 'success', '审批通过');
   }
 
   function submitMcpTest(form) {

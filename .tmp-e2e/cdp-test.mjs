@@ -69,10 +69,27 @@ try {
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await waitDom(`document.readyState === 'complete' && document.querySelectorAll('.project-card').length === 3`);
 
+  check('project card member count = 7', (await evaluate(`document.querySelector('.project-card[data-id="p-order"]')?.innerText.includes('7 名成员')`)) === true);
+  await evaluate(`document.querySelector('.project-card[data-id="p-order"]').click()`);
+  await waitDom(`location.hash === '#/requirements'`);
   check('sidebar has team entry', (await evaluate(`Array.from(document.querySelectorAll('.side-item')).some((el) => el.textContent.includes('团队管理'))`)) === true);
   const navLabels = await evaluate(`Array.from(document.querySelectorAll('.sidebar .side-item[data-action="nav"]')).map((el) => el.textContent.trim())`);
   check('team management is last menu item', navLabels[navLabels.length - 1] === '团队管理', navLabels.join(' | '));
-  check('project card member count = 7', (await evaluate(`document.querySelector('.project-card-footer')?.textContent.includes('7 名成员')`)) === true);
+
+  const topNavLabels = await evaluate(`Array.from(document.querySelectorAll('#topnav .nav-item')).map((el) => el.textContent.trim())`);
+  check('platform admin removed from top nav', !topNavLabels.includes('平台管理'), topNavLabels.join(' | '));
+  await evaluate(`document.querySelector('[data-action="avatar"]').click()`);
+  await waitDom(`document.querySelector('#avatar-menu').classList.contains('open')`);
+  const menuLabels = await evaluate(`Array.from(document.querySelectorAll('#avatar-menu .menu-item')).map((el) => el.textContent.trim())`);
+  const preferenceIndex = menuLabels.findIndex((label) => label.includes('偏好设置'));
+  check('platform settings sits between preferences and audit', preferenceIndex >= 0 && menuLabels[preferenceIndex + 1]?.includes('平台设置') && menuLabels[preferenceIndex + 2]?.includes('审计日志'), menuLabels.join(' | '));
+  await evaluate(`document.querySelector('#avatar-menu [data-action="open-nav-config"]').click()`);
+  await waitDom(`document.querySelector('.overlay.open .drawer-title')?.textContent.trim() === '平台设置'`);
+  const configLabels = await evaluate(`Array.from(document.querySelectorAll('.overlay.open .config-row .config-label')).map((el) => el.textContent.trim())`);
+  check('platform settings lists configurable top entries', configLabels.length === 5 && !configLabels.includes('平台管理'), configLabels.join(' | '));
+  await evaluate(`document.querySelector('.overlay.open [data-action="close-overlay"]').click()`);
+  await sleep(200);
+
   await evaluate(`location.hash = '#/members'`);
   await waitDom(`document.querySelector('.page-title')?.textContent === '团队管理'`);
   await sleep(450);

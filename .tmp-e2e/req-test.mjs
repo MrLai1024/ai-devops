@@ -80,6 +80,10 @@ try {
   await waitDom(`!!document.querySelector('.tabs') && document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
   await sleep(450);
 
+  const sidebarText = await evaluate(`document.querySelector('.sidebar')?.innerText || ''`);
+  check('batch release nav removed', !sidebarText.includes('批次发布'), sidebarText);
+  check('overview, agent and runtime nav removed', !['项目总览', 'Agent 任务', '应用运行'].some((label) => sidebarText.includes(label)), sidebarText);
+
   const newButton = await evaluate(`(() => { const btn = document.querySelector('#main .card [data-action="new-requirement"]'); const table = document.querySelector('#main .req-table'); if (!btn || !table) return null; return { text: btn.textContent.trim(), aboveTable: btn.getBoundingClientRect().top < table.getBoundingClientRect().top, leftAligned: btn.getBoundingClientRect().left <= table.getBoundingClientRect().left + 2 }; })()`);
   check('new requirement button at list top-left', !!newButton && newButton.text.includes('新建需求') && newButton.aboveTable && newButton.leftAligned, JSON.stringify(newButton));
   await evaluate(`document.querySelector('#main .card [data-action="new-requirement"]').click()`);
@@ -211,7 +215,7 @@ try {
   await evaluate(`document.querySelector('.release-manage tbody tr[data-id="REL-104"]').click()`);
   await waitDom(`!!document.querySelector('.overlay.open .drawer')`);
   const releaseDetail = await evaluate(`(() => { const root = document.querySelector('.overlay.open .drawer'); return { title: root.querySelector('.drawer-title')?.textContent || '', text: root.innerText }; })()`);
-  check('release detail shows window and requirements', releaseDetail.title.includes('v2.4 晚间发布') && releaseDetail.text.includes('2026-10-24 20:00 ~ 2026-10-24 23:00') && releaseDetail.text.includes('RQ-116') && releaseDetail.text.includes('RQ-117') && releaseDetail.text.includes('批次发布'), JSON.stringify(releaseDetail).slice(0, 240));
+  check('release detail shows window and requirements', releaseDetail.title.includes('v2.4 晚间发布') && releaseDetail.text.includes('2026-10-24 20:00 ~ 2026-10-24 23:00') && releaseDetail.text.includes('RQ-116') && releaseDetail.text.includes('RQ-117') && releaseDetail.text.includes('发布管理仅用于排期') && !releaseDetail.text.includes('批次发布'), JSON.stringify(releaseDetail).slice(0, 240));
   await sleep(250);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/release-detail.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`document.querySelector('[data-action="close-overlay"]').click()`);

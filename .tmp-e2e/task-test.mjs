@@ -137,7 +137,7 @@ try {
   await waitDom(`location.hash === '#/tasks/T-203' && !!document.querySelector('.task-page-title')`);
   const beforeApprove = await evaluate(`document.querySelector('.task-page-badges')?.innerText || ''`);
   check('agent list opens same task page', beforeApprove.includes('待审批'));
-  check('agent task detail keeps agent nav context', (await evaluate(`(() => { const nav = document.querySelector('.sidebar .side-item.active'); return !!nav && nav.textContent.includes('Agent 任务') && !document.querySelector('.req-page .tabs'); })()`)) === true);
+  check('agent task detail keeps project nav context', (await evaluate(`(() => { const nav = document.querySelector('.nav-item.active'); const sidebar = document.querySelector('.sidebar'); return !!sidebar && !!nav && nav.textContent.includes('项目空间') && !document.querySelector('.req-page .tabs'); })()`)) === true);
   await sleep(400);
   const viewportDims = await evaluate(`({ html: document.documentElement.scrollHeight, body: document.body.scrollHeight, vh: innerHeight, main: Math.round(document.querySelector('#main').getBoundingClientRect().height) })`);
   check('task detail fits viewport without page scroll', viewportDims.html <= viewportDims.vh + 1 && viewportDims.body <= viewportDims.vh + 1, JSON.stringify(viewportDims));
