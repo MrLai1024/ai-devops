@@ -3290,6 +3290,31 @@
     });
   }
 
+  function openReleaseForm() {
+    const iteration = currentIteration();
+    const candidates = iterationRequirements(iteration.id).filter((req) => !req.deferredTo);
+    const checklist = candidates.length
+      ? candidates.map((req) => `<label class="release-req-option">
+          <input type="checkbox" name="requirements" value="${req.id}">
+          <span class="release-req-main"><b>${esc(req.id)}</b><span>${esc(req.title)}</span></span>
+          <span class="release-req-meta">${pill(req.status)}<span>${esc(req.owner)}</span></span>
+        </label>`).join('')
+      : '<div class="empty-table">当前迭代没有可关联的未延期需求</div>';
+    openPanel({
+      title: '新建发布', sub: `${iteration.name} · 发布排期`, variant: 'modal',
+      body: `<form id="release-form" data-form="new-release">
+        <div class="field"><label for="release-name">发布名称</label><input id="release-name" name="name" class="input" maxlength="60" required placeholder="例如：v2.4 正式发布"></div>
+        <div class="field-row">
+          <div class="field"><label for="release-start">开始时间</label><input id="release-start" name="startAt" class="input" type="datetime-local" value="2026-10-24T20:00" required></div>
+          <div class="field"><label for="release-end">结束时间</label><input id="release-end" name="endAt" class="input" type="datetime-local" value="2026-10-24T23:00" required></div>
+        </div>
+        <div class="field"><label>关联需求</label><div class="release-req-options">${checklist}</div><div class="form-hint">仅显示当前迭代未延期需求；至少选择 1 个。</div></div>
+        <div class="form-hint">发布状态按时间段自动推导。发布管理仅用于排期，实际发布执行请前往批次发布。</div>
+        <div class="btn-row" style="justify-content:flex-end;margin-top:18px;"><button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="submit" ${candidates.length ? '' : 'disabled'}>创建发布</button></div>
+      </form>`
+    });
+  }
+
   function openTaskForm() {
     const projectOptions = PROJECTS.map((project) => `<option value="${project.id}" ${project.id === state.projectId ? 'selected' : ''}>${esc(project.name)}</option>`).join('');
     openPanel({
@@ -3509,6 +3534,7 @@
         if (action === 'confirm-remove-member') { confirmRemoveMember(id); return; }
         if (action === 'new-requirement') { openRequirementForm(); return; }
         if (action === 'new-task') { openTaskForm(); return; }
+        if (action === 'new-release') { openReleaseForm(); return; }
         if (action === 'req-tab') { state.reqTab = target.dataset.tab; if (taskIdFromRoute()) { navigate('#/requirements'); return; } renderMain(); return; }
         if (action === 'req-page') { state.reqPage = Number(target.dataset.page) || 1; renderMain(); return; }
         if (action === 'reset-req-filters') { resetRequirementFilters(); renderMain(); return; }
@@ -3617,6 +3643,7 @@
       else if (type === 'new-requirement') submitRequirement(form);
       else if (type === 'defer-req') submitDefer(form);
       else if (type === 'new-task') submitTask(form);
+      else if (type === 'new-release') submitRelease(form);
       else if (type === 'run-pipeline') submitPipeline(form);
       else if (type === 'approve-release') submitApproval(form);
       else if (type === 'mcp-test') submitMcpTest(form);
@@ -4084,6 +4111,37 @@
     closeOverlay();
     renderMain();
     toast(`${req.id} 已延期至 ${target === 'backlog' ? 'Backlog' : iterationById(target)?.name || target}。`, 'success', '需求已延期');
+  }
+
+  function submitRelease(form) {
+    const data = new FormData(form);
+    const name = String(data.get('name') || '').trim();
+    const startAt = String(data.get('startAt') || '');
+    const endAt = String(data.get('endAt') || '');
+    const requirementIds = data.getAll('requirements').map(String);
+    if (!name) { toast('请填写发布名称。', 'warning'); return; }
+    if (!startAt || !endAt) { toast('请选择开始和结束时间。', 'warning'); return; }
+    if (new Date(endAt).getTime() <= new Date(startAt).getTime()) { toast('结束时间必须晚于开始时间。', 'warning'); return; }
+    const iteration = currentIteration();
+    const allowed = new Set(iterationRequirements(iteration.id).filter((req) => !req.deferredTo).map((req) => req.id));
+    if (!requirementIds.length || requirementIds.some((id) => !allowed.has(id))) { toast('请至少选择一个当前迭代的未延期需求。', 'warning'); return; }
+    const release = {
+      id: `REL-${++state.releaseSeq}`,
+      name,
+      iterationId: iteration.id,
+      projectId: iteration.projectId,
+      startAt,
+      endAt,
+      requirementIds,
+      createdBy: '张明',
+      createdAt: formatDateTime(DEMO_NOW)
+    };
+    RELEASES.push(release);
+    audit('创建发布', release.id, '成功', { name, startAt, endAt, requirementIds });
+    closeOverlay();
+    state.reqTab = 'plan';
+    renderMain();
+    toast(`${release.name} 已创建，状态：${releaseStatus(release)}。`, 'success', '发布已创建');
   }
 
   function submitTask(form) {

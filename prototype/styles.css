@@ -1447,6 +1447,14 @@ tr.row-click { cursor: pointer; }
 .release-window { font-size: 11px; color: #475569; }
 .release-req-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .release-req-ids { font-size: 10.5px; color: #8da0b5; }
+.release-req-options { max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: #fbfdff; }
+.release-req-option { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border: 1px solid #eef2f7; border-radius: 8px; background: #fff; cursor: pointer; }
+.release-req-option:hover { border-color: #bae6fd; }
+.release-req-option input { margin: 0; accent-color: #0284c7; }
+.release-req-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.release-req-main b { font-family: var(--mono); font-size: 10px; color: #0369a1; }
+.release-req-main span { font-size: 11px; color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.release-req-meta { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; font-size: 10px; color: #8da0b5; }
 
 /* ---------------- Agent task detail ---------------- */
 

@@ -179,6 +179,31 @@ try {
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
 
+  await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="plan"]').click()`);
+  await waitDom(`!!document.querySelector('.release-manage')`);
+  await evaluate(`document.querySelector('[data-action="new-release"]').click()`);
+  await waitDom(`!!document.querySelector('#release-form')`);
+  const releaseFormInfo = await evaluate(`(() => ({
+    hasName: !!document.querySelector('#release-name'),
+    hasStart: !!document.querySelector('#release-start'),
+    hasEnd: !!document.querySelector('#release-end'),
+    optionCount: document.querySelectorAll('#release-form input[name="requirements"]').length,
+    hasDeferred: Array.from(document.querySelectorAll('#release-form input[name="requirements"]')).some((el) => el.value === 'RQ-104' || el.value === 'RQ-110')
+  }))()`);
+  check('new release form has name, time range and requirement choices', releaseFormInfo.hasName && releaseFormInfo.hasStart && releaseFormInfo.hasEnd && releaseFormInfo.optionCount === 11 && !releaseFormInfo.hasDeferred, JSON.stringify(releaseFormInfo));
+  await evaluate(`(() => { const form = document.querySelector('#release-form'); form.elements.name.value = 'v2.4 晚间发布'; form.elements.startAt.value = '2026-10-24T20:00'; form.elements.endAt.value = '2026-10-24T19:00'; form.requestSubmit(); return true; })()`);
+  await waitDom(`document.body.innerText.includes('结束时间必须晚于开始时间')`);
+  check('release rejects end before start', true);
+  await evaluate(`(() => { const form = document.querySelector('#release-form'); form.elements.endAt.value = '2026-10-24T23:00'; form.requestSubmit(); return true; })()`);
+  await waitDom(`document.body.innerText.includes('请至少选择一个')`);
+  check('release requires at least one requirement', true);
+  await evaluate(`(() => { const form = document.querySelector('#release-form'); form.querySelector('input[name="requirements"][value="RQ-101"]').click(); form.querySelector('input[name="requirements"][value="RQ-102"]').click(); form.requestSubmit(); return true; })()`);
+  await waitDom(`document.querySelectorAll('.release-manage tbody tr[data-id]').length === 4`);
+  const createdRelease = await evaluate(`(() => { const row = Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')).find((tr) => tr.innerText.includes('v2.4 晚间发布')); return row ? { id: row.dataset.id, text: row.innerText } : null; })()`);
+  check('new release is added with derived status', !!createdRelease && createdRelease.id === 'REL-104' && createdRelease.text.includes('未开始') && createdRelease.text.includes('2 个'), JSON.stringify(createdRelease));
+  await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
+  await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
+
   await evaluate(`document.querySelector('.req-table tbody tr[data-id="RQ-101"]').click()`);
   await waitDom(`!!document.querySelector('.overlay.open .drawer')`);
   const drawer = await evaluate(`(() => {
