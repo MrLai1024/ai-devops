@@ -176,6 +176,8 @@ try {
   const releaseState = await evaluate(`(() => { const rows = Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')); const byId = Object.fromEntries(rows.map((tr) => [tr.dataset.id, tr.innerText])); return { gray: byId['REL-101'] || '', formal: byId['REL-102'] || '', pre: byId['REL-103'] || '' }; })()`);
   check('release status derives from time window', releaseState.gray.includes('进行中') && releaseState.formal.includes('未开始') && releaseState.pre.includes('已结束') && releaseState.gray.includes('10-24 09:00') && releaseState.formal.includes('10-24 20:00'), JSON.stringify(releaseState).slice(0, 240));
   check('old release gate content removed', (await evaluate(`!document.body.innerText.includes('发布就绪检查')`)) === true);
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/release-management.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
 
@@ -191,6 +193,8 @@ try {
     hasDeferred: Array.from(document.querySelectorAll('#release-form input[name="requirements"]')).some((el) => el.value === 'RQ-104' || el.value === 'RQ-110')
   }))()`);
   check('new release form has name, time range and requirement choices', releaseFormInfo.hasName && releaseFormInfo.hasStart && releaseFormInfo.hasEnd && releaseFormInfo.optionCount === 11 && !releaseFormInfo.hasDeferred, JSON.stringify(releaseFormInfo));
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/release-form.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`(() => { const form = document.querySelector('#release-form'); form.elements.name.value = 'v2.4 晚间发布'; form.elements.startAt.value = '2026-10-24T20:00'; form.elements.endAt.value = '2026-10-24T19:00'; form.requestSubmit(); return true; })()`);
   await waitDom(`document.body.innerText.includes('结束时间必须晚于开始时间')`);
   check('release rejects end before start', true);
@@ -207,6 +211,8 @@ try {
   await waitDom(`!!document.querySelector('.overlay.open .drawer')`);
   const releaseDetail = await evaluate(`(() => { const root = document.querySelector('.overlay.open .drawer'); return { title: root.querySelector('.drawer-title')?.textContent || '', text: root.innerText }; })()`);
   check('release detail shows window and requirements', releaseDetail.title.includes('v2.4 晚间发布') && releaseDetail.text.includes('2026-10-24 20:00') && releaseDetail.text.includes('2026-10-24 23:00') && releaseDetail.text.includes('RQ-101') && releaseDetail.text.includes('RQ-102') && releaseDetail.text.includes('批次发布'), JSON.stringify(releaseDetail).slice(0, 240));
+  await sleep(250);
+  await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/release-detail.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`document.querySelector('[data-action="close-overlay"]').click()`);
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
