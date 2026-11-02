@@ -1441,6 +1441,13 @@ tr.row-click { cursor: pointer; }
 .task-card-owner .icon { color: #94a3b8; }
 .task-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 10px; font-size: 9px; color: #a1b0c2; }
 
+/* ---------------- Release management ---------------- */
+
+.release-manage-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.release-window { font-size: 11px; color: #475569; }
+.release-req-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.release-req-ids { font-size: 10.5px; color: #8da0b5; }
+
 /* ---------------- Agent task detail ---------------- */
 
 .main.main-task { height: calc(100vh - 60px); min-height: 0; padding: 22px 28px 20px; overflow: hidden; display: flex; flex-direction: column; }

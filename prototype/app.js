@@ -74,10 +74,10 @@
 
   function toneFor(status) {
     const s = String(status);
-    if (['成功', '健康', '活跃', '发布', '已发布', '已完成', '已处理', '已启用', '低', 'SUCCEEDED', 'APPROVED', 'RELEASED', '待发布', '已批准'].includes(s)) return 'success';
+    if (['成功', '健康', '活跃', '发布', '已发布', '已完成', '已处理', '已启用', '低', 'SUCCEEDED', 'APPROVED', 'RELEASED', '待发布', '已批准', '进行中'].includes(s)) return 'success';
     if (['失败', '已取消', '已中止', '已回滚', '高', '严重', 'FAILED', 'ROLLED_BACK', 'PARTIALLY_ROLLED_BACK'].includes(s)) return 'danger';
     if (['待确认', '待审批', '排队中', '部分失败', '已延期', '测试', '中', '警告', 'PARTIALLY_FAILED', 'PENDING_APPROVAL', 'BLOCKED', '待修改'].includes(s)) return 'warning';
-    if (['分析', '开发', '开发中', '方案中', '运行中', '发布中', 'RELEASING', 'DEPLOYING', 'PENDING', '待分析'].includes(s)) return 'info';
+    if (['分析', '开发', '开发中', '方案中', '运行中', '发布中', 'RELEASING', 'DEPLOYING', 'PENDING', '待分析', '未开始'].includes(s)) return 'info';
     if (['设计', '规划中', '已暂停'].includes(s)) return 'purple';
     return 'neutral';
   }
@@ -861,6 +861,13 @@
     { id: 'rel-22', iterationId: 'it-22', projectId: 'p-order', version: 'v2.3.1', status: 'SUCCEEDED', time: '2026-09-18 11:05', apps: '3 个应用' }
   ];
 
+  const RELEASES = [
+    { id: 'REL-101', name: 'v2.4 灰度发布', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-24T09:00', endAt: '2026-10-24T12:00', requirementIds: ['RQ-101', 'RQ-102'], createdBy: '张明', createdAt: '2026-10-23 18:20' },
+    { id: 'REL-102', name: 'v2.4 正式发布', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-24T20:00', endAt: '2026-10-24T23:00', requirementIds: ['RQ-101', 'RQ-102', 'RQ-103', 'RQ-111'], createdBy: '张明', createdAt: '2026-10-24 09:10' },
+    { id: 'REL-103', name: 'v2.4 预发布验证', iterationId: 'it-24', projectId: 'p-order', startAt: '2026-10-23T20:00', endAt: '2026-10-23T22:00', requirementIds: ['RQ-103', 'RQ-112'], createdBy: '陈晨', createdAt: '2026-10-23 15:30' }
+  ];
+  const DEMO_NOW = '2026-10-24T10:30';
+
   const NOTIFICATIONS = [
     { id: 'n-1', title: '迭代 v2.4 发布计划待审批', desc: '张明发起了批次发布，涉及 4 个应用', time: '10 分钟前', route: '#/releases', tone: 'warning' },
     { id: 'n-2', title: 'T-203 等待审批', desc: 'Coding Agent 已完成代码修改与单测', time: '22 分钟前', route: '#/agents', tone: 'info' },
@@ -884,6 +891,47 @@
         { id: 'ri-4', appId: 'order-admin', app: 'order-admin', env: 'prod', digest: 'sha256:9d02a1f3c9e6', commit: 'f8a2c11', status: 'PENDING', order: 4, deployedAt: null, failure: null }
       ]
     };
+  }
+
+  const RELEASE_STATUS_RANK = { 进行中: 0, 未开始: 1, 已结束: 2 };
+
+  function releaseStatus(release) {
+    const now = new Date(DEMO_NOW).getTime();
+    const start = new Date(release.startAt).getTime();
+    const end = new Date(release.endAt).getTime();
+    if (now < start) return '未开始';
+    if (now > end) return '已结束';
+    return '进行中';
+  }
+
+  function formatDateTime(value) {
+    return String(value || '').replace('T', ' ');
+  }
+
+  function compactDateTime(value) {
+    const [date, time] = String(value || '').split('T');
+    return `${date.slice(5)} ${time || ''}`.trim();
+  }
+
+  function releaseWindow(release, compact = false) {
+    const format = compact ? compactDateTime : formatDateTime;
+    return `${format(release.startAt)} → ${format(release.endAt)}`;
+  }
+
+  function releaseRequirementSummary(release) {
+    const ids = release.requirementIds || [];
+    const preview = ids.slice(0, 2).map(esc).join('、');
+    return `<span class="tag">${ids.length} 个</span><span class="release-req-ids">${preview}${ids.length > 2 ? ` +${ids.length - 2}` : ''}</span>`;
+  }
+
+  function sortedReleases(iterationId) {
+    return RELEASES
+      .filter((item) => item.iterationId === iterationId)
+      .slice()
+      .sort((a, b) => {
+        const rank = (RELEASE_STATUS_RANK[releaseStatus(a)] ?? 9) - (RELEASE_STATUS_RANK[releaseStatus(b)] ?? 9);
+        return rank || a.startAt.localeCompare(b.startAt);
+      });
   }
 
   /* ---------------- state ---------------- */
@@ -924,6 +972,7 @@
     auditSearch: '',
     navConfig: DEFAULT_NAV.map((item) => ({ ...item })),
     release: freshRelease(),
+    releaseSeq: 103,
     notificationsRead: false,
     pendingReqId: null,
     pendingTaskId: null,
@@ -961,6 +1010,8 @@
   const projectRequirements = (projectId) => REQUIREMENTS.filter((item) => item.projectId === projectId);
   const iterationRequirements = (iterationId) => REQUIREMENTS.filter((item) => item.iterationId === iterationId);
   const projectTasks = (projectId) => TASKS.filter((item) => item.projectId === projectId);
+  const releaseById = (id) => RELEASES.find((item) => item.id === id);
+  const iterationReleases = (iterationId) => RELEASES.filter((item) => item.iterationId === iterationId);
   const projectApps = (projectId) => APPS.filter((item) => item.projectId === projectId);
   const projectPipelines = (projectId) => PIPELINES.filter((item) => item.projectId === projectId);
   const projectRepos = (projectId) => REPOS.filter((item) => item.projectId === projectId);
@@ -1400,14 +1451,14 @@
     const tabs = [
       { id: 'list', label: '需求列表' },
       { id: 'board', label: '任务看板' },
-      { id: 'plan', label: '发布计划' }
+      { id: 'plan', label: '发布管理' }
     ];
     return `
       <div class="req-page ${taskId || activeTab === 'list' || activeTab === 'board' ? 'req-page-fill' : ''}${taskId ? ' req-task-embedded' : ''}">
         <div class="tabs">
           ${tabs.map((tab) => `<button class="tab ${activeTab === tab.id ? 'active' : ''}" type="button" data-action="req-tab" data-tab="${tab.id}">${tab.label}${tab.id === 'list' ? `<span class="tab-count">${stats.total}</span>` : ''}</button>`).join('')}
         </div>
-        ${taskId ? renderTaskDetail(taskId) : activeTab === 'list' ? requirementListView(reqs, ownerOptions, appOptions) : activeTab === 'board' ? agentTaskBoardView() : requirementPlanView(iteration, stats)}
+        ${taskId ? renderTaskDetail(taskId) : activeTab === 'list' ? requirementListView(reqs, ownerOptions, appOptions) : activeTab === 'board' ? agentTaskBoardView() : releaseManagementView(iteration)}
       </div>
     `;
   }
@@ -1569,30 +1620,32 @@
     </article>`;
   }
 
-  function requirementPlanView(iteration, stats) {
-    const reqs = iterationRequirements(iteration.id);
-    const release = state.release.iterationId === iteration.id ? state.release : null;
-    const activeRelease = release && !['SUCCEEDED', 'FAILED', 'ROLLED_BACK'].includes(release.status);
-    return `<div class="grid grid-main">
+  function releaseManagementView(iteration) {
+    const releases = sortedReleases(iteration.id);
+    const rows = releases.map((release) => {
+      const status = releaseStatus(release);
+      return `<tr class="row-click" data-action="open-release" data-id="${release.id}" tabindex="0">
+        <td><div class="cell-main"><b>${esc(release.name)}</b><small>${esc(release.id)}</small></div></td>
+        <td class="nowrap"><span class="release-window">${esc(releaseWindow(release, true))}</span></td>
+        <td>${pill(status)}</td>
+        <td><div class="release-req-cell">${releaseRequirementSummary(release)}</div></td>
+        <td>${esc(release.createdBy)}</td>
+        <td><button class="btn btn-ghost btn-xs" type="button" data-action="open-release" data-id="${release.id}">查看</button></td>
+      </tr>`;
+    }).join('');
+    return `<div class="release-manage">
+      <div class="release-manage-head">
+        <div><div class="section-title">发布管理</div><div class="section-sub">${esc(iteration.name)} · ${releases.length} 个发布 · 按时间段排期</div></div>
+        <button class="btn btn-primary btn-sm" type="button" data-action="new-release">${icon('plus', 14)} 新建发布</button>
+      </div>
       <section class="card">
-        <div class="card-head"><div><div class="card-title">发布就绪检查</div><div class="card-sub">所有未延期需求必须就绪；每个应用必须有绿色流水线与签名镜像</div></div><div class="card-actions">${pill(activeRelease ? release.status : stats.blocked ? '有阻塞' : '可发布')}</div></div>
-        <div class="card-body">
-          <div class="gate-list">
-            <div class="gate-item ${stats.ready === stats.total - stats.deferred ? 'ok' : 'warn'}"><span class="gate-icon">${icon(stats.ready === stats.total - stats.deferred ? 'check' : 'alert', 12)}</span><div><b>需求就绪 ${stats.ready}/${stats.total - stats.deferred}</b><small>${stats.blocked ? `${stats.blocked} 个需求未就绪，需要处理或延期` : '全部未延期需求已就绪'}</small></div></div>
-            <div class="gate-item ok"><span class="gate-icon">${icon('check', 12)}</span><div><b>镜像签名 4/4</b><small>cosign 签名与 SBOM 已验证</small></div></div>
-            <div class="gate-item ok"><span class="gate-icon">${icon('check', 12)}</span><div><b>test 验证 4/4</b><small>冒烟与 E2E 通过</small></div></div>
-            <div class="gate-item ${stats.deferred ? 'warn' : 'ok'}"><span class="gate-icon">${icon(stats.deferred ? 'clock' : 'check', 12)}</span><div><b>延期需求 ${stats.deferred}</b><small>${stats.deferred ? '延期需求不计入本次发布，关闭迭代时结转' : '无延期需求'}</small></div></div>
+        <div class="card-body" style="padding-top:12px;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>发布名称</th><th>时间段</th><th>状态</th><th>关联需求</th><th>创建人</th><th>操作</th></tr></thead>
+              <tbody>${rows || `<tr><td colspan="6">${emptyTable('当前迭代还没有发布，点击右上角新建发布')}</td></tr>`}</tbody>
+            </table>
           </div>
-          <div class="divider"></div>
-          <div class="flex"><span class="muted" style="font-size:11px;">审批绑定 digest 集合；digest 变化需重新审批。</span><button class="btn btn-primary btn-sm" style="margin-left:auto;" type="button" data-action="release-gate">${icon('rocket', 13)} 发起迭代发布</button></div>
-        </div>
-      </section>
-      <section class="card">
-        <div class="card-head"><div><div class="card-title">本次发布范围</div><div class="card-sub">按应用生成发布项</div></div></div>
-        <div class="card-body">
-          ${release ? release.items.map((item) => `<div class="release-item-app" style="margin-bottom:10px;"><span class="release-order">${item.order}</span><div><b style="font-size:12px;color:#334155;">${esc(item.app)}</b><div class="release-digest">${esc(item.digest)}</div></div><span style="margin-left:auto;">${pill(item.status)}</span></div>`).join('') : '<div class="empty-table">该迭代尚未创建发布计划</div>'}
-          <div class="divider"></div>
-          <div class="release-note"><b>发布说明</b><br>${esc(iteration.goal)}<br><span class="faint">关联需求：${reqs.filter((item) => item.ready).map((item) => esc(item.id)).join('、') || '—'}</span></div>
         </div>
       </section>
     </div>`;

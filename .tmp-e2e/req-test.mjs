@@ -168,9 +168,14 @@ try {
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
 
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="plan"]').click()`);
-  await waitDom(`document.body.innerText.includes('发布就绪检查')`);
-  const planText = await evaluate(`document.querySelector('#main')?.innerText || ''`);
-  check('release plan still renders with deferred items', planText.includes('需求就绪 11/11') && planText.includes('延期需求 2'), planText.length + ' chars');
+  await waitDom(`!!document.querySelector('.release-manage') && document.querySelectorAll('.release-manage tbody tr[data-id]').length === 3`);
+  const releaseTabLabel = await evaluate(`Array.from(document.querySelectorAll('.tabs .tab')).find((el) => el.dataset.tab === 'plan')?.textContent.trim()`);
+  check('release tab renamed to release management', releaseTabLabel === '发布管理', String(releaseTabLabel));
+  const releaseRows = await evaluate(`Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')).map((tr) => tr.innerText)`);
+  check('release management seeds three releases', releaseRows.length === 3, String(releaseRows.length));
+  const releaseState = await evaluate(`(() => { const rows = Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')); const byId = Object.fromEntries(rows.map((tr) => [tr.dataset.id, tr.innerText])); return { gray: byId['REL-101'] || '', formal: byId['REL-102'] || '', pre: byId['REL-103'] || '' }; })()`);
+  check('release status derives from time window', releaseState.gray.includes('进行中') && releaseState.formal.includes('未开始') && releaseState.pre.includes('已结束') && releaseState.gray.includes('10-24 09:00') && releaseState.formal.includes('10-24 20:00'), JSON.stringify(releaseState).slice(0, 240));
+  check('old release gate content removed', (await evaluate(`!document.body.innerText.includes('发布就绪检查')`)) === true);
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
 
