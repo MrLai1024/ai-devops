@@ -3315,6 +3315,36 @@
     });
   }
 
+  function openReleaseDrawer(id) {
+    const release = releaseById(id);
+    if (!release) return;
+    const iteration = iterationById(release.iterationId);
+    const reqs = (release.requirementIds || []).map((reqId) => requirementById(reqId)).filter(Boolean);
+    const body = `<div class="drawer-section">
+      <div class="meta-grid">
+        <div class="meta-item"><div class="meta-label">状态</div><div class="meta-value">${pill(releaseStatus(release))}</div></div>
+        <div class="meta-item"><div class="meta-label">时间段</div><div class="meta-value">${esc(formatDateTime(release.startAt))} → ${esc(formatDateTime(release.endAt))}</div></div>
+        <div class="meta-item"><div class="meta-label">创建人</div><div class="meta-value">${esc(release.createdBy)}</div></div>
+        <div class="meta-item"><div class="meta-label">创建时间</div><div class="meta-value">${esc(release.createdAt)}</div></div>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">关联需求 · ${reqs.length} 个</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>需求编号</th><th>需求标题</th><th>状态</th><th>优先级</th><th>责任人</th></tr></thead>
+        <tbody>${reqs.length ? reqs.map((req) => `<tr>
+          <td><span class="cell-id">${esc(req.id)}</span></td>
+          <td><div class="cell-main"><b>${esc(req.title)}</b></div></td>
+          <td><div class="flex" style="gap:4px;flex-wrap:wrap;">${pill(req.status)}${req.deferredTo ? '<span class="tag">已延期</span>' : ''}</div></td>
+          <td>${priorityPill(req.priority)}</td>
+          <td>${esc(req.owner)}</td>
+        </tr>`).join('') : '<tr><td colspan="5">暂无关联需求</td></tr>'}</tbody>
+      </table></div>
+    </div>
+    <p class="hint">发布管理仅用于排期，实际发布执行请在「批次发布」中完成。</p>`;
+    openPanel({ title: release.name, sub: `${release.id} · ${iteration?.name || ''} · 发布排期`, body, extraWide: true });
+  }
+
   function openTaskForm() {
     const projectOptions = PROJECTS.map((project) => `<option value="${project.id}" ${project.id === state.projectId ? 'selected' : ''}>${esc(project.name)}</option>`).join('');
     openPanel({
@@ -3535,6 +3565,7 @@
         if (action === 'new-requirement') { openRequirementForm(); return; }
         if (action === 'new-task') { openTaskForm(); return; }
         if (action === 'new-release') { openReleaseForm(); return; }
+        if (action === 'open-release') { openReleaseDrawer(id); return; }
         if (action === 'req-tab') { state.reqTab = target.dataset.tab; if (taskIdFromRoute()) { navigate('#/requirements'); return; } renderMain(); return; }
         if (action === 'req-page') { state.reqPage = Number(target.dataset.page) || 1; renderMain(); return; }
         if (action === 'reset-req-filters') { resetRequirementFilters(); renderMain(); return; }

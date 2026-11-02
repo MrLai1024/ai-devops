@@ -201,6 +201,13 @@ try {
   await waitDom(`document.querySelectorAll('.release-manage tbody tr[data-id]').length === 4`);
   const createdRelease = await evaluate(`(() => { const row = Array.from(document.querySelectorAll('.release-manage tbody tr[data-id]')).find((tr) => tr.innerText.includes('v2.4 晚间发布')); return row ? { id: row.dataset.id, text: row.innerText } : null; })()`);
   check('new release is added with derived status', !!createdRelease && createdRelease.id === 'REL-104' && createdRelease.text.includes('未开始') && createdRelease.text.includes('2 个'), JSON.stringify(createdRelease));
+  await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="plan"]').click()`);
+  await waitDom(`!!document.querySelector('.release-manage')`);
+  await evaluate(`document.querySelector('.release-manage tbody tr[data-id="REL-104"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open .drawer')`);
+  const releaseDetail = await evaluate(`(() => { const root = document.querySelector('.overlay.open .drawer'); return { title: root.querySelector('.drawer-title')?.textContent || '', text: root.innerText }; })()`);
+  check('release detail shows window and requirements', releaseDetail.title.includes('v2.4 晚间发布') && releaseDetail.text.includes('2026-10-24 20:00') && releaseDetail.text.includes('2026-10-24 23:00') && releaseDetail.text.includes('RQ-101') && releaseDetail.text.includes('RQ-102') && releaseDetail.text.includes('批次发布'), JSON.stringify(releaseDetail).slice(0, 240));
+  await evaluate(`document.querySelector('[data-action="close-overlay"]').click()`);
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
 
