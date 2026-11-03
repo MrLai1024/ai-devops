@@ -187,6 +187,45 @@ try {
   await waitDom(`document.querySelector('.empty h2')?.innerText.includes('文档不存在')`);
   check('malformed knowledge url renders not-found', true);
 
+  await evaluate(`location.hash = '#/knowledge'`);
+  await waitDom(`!!document.querySelector('.knowledge-page')`);
+  if (await evaluate(`document.querySelector('[data-action="knowledge-tab"][data-tab="project"]')?.classList.contains('active') !== true`)) {
+    await evaluate(`document.querySelector('[data-action="knowledge-tab"][data-tab="project"]').click()`);
+  }
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
+  await evaluate(`document.querySelector('#main tbody tr[data-id="doc-1"]').click()`);
+  await waitDom(`!!document.querySelector('[data-action="edit-doc"]')`);
+  await evaluate(`document.querySelector('[data-action="edit-doc"]').click()`);
+  await waitDom(`location.hash === '#/knowledge/doc-1/edit' && !!document.querySelector('#doc-edit-form')`);
+  check('edit page loads markdown source', (await evaluate(`document.querySelector('#doc-content-input')?.value.includes('# 订单履约状态机说明')`)) === true);
+  check('edit page has live preview', (await evaluate(`!!document.querySelector('#doc-preview h1')`)) === true);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="bold"]').click()`);
+  await sleep(180);
+  check('toolbar inserts markdown and updates preview', (await evaluate(`document.querySelector('#doc-content-input')?.value.includes('**加粗文本**') && document.querySelector('#doc-preview')?.innerHTML.includes('<strong>加粗文本</strong>')`)) === true);
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = input.value + '\\n\\n## 新增章节\\n\\n编辑后的内容'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await sleep(180);
+  check('typing updates live preview', (await evaluate(`!!document.querySelector('#doc-preview h2') && document.querySelector('#doc-preview').innerText.includes('新增章节')`)) === true);
+  await evaluate(`(() => { const form = document.querySelector('#doc-edit-form'); form.elements.title.value = '订单履约状态机说明（已编辑）'; form.requestSubmit(); return true; })()`);
+  await waitDom(`location.hash === '#/knowledge/doc-1' && document.querySelector('.doc-title')?.innerText.includes('已编辑')`);
+  check('save persists title and content', (await evaluate(`document.querySelector('.doc-title')?.innerText.includes('已编辑') && document.querySelector('.doc-content')?.innerText.includes('新增章节')`)) === true);
+  await waitDom(`document.querySelector('.doc-page')?.innerText.includes('已索引')`, 5000);
+  check('save completes reindex', true);
+  await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
+  check('list reflects edited title', (await evaluate(`document.querySelector('#main tbody tr[data-id="doc-1"]')?.innerText.includes('已编辑')`)) === true);
+
+  await evaluate(`document.querySelector('#main tbody tr[data-id="doc-1"]').click()`);
+  await waitDom(`!!document.querySelector('[data-action="edit-doc"]')`);
+  await evaluate(`document.querySelector('[data-action="edit-doc"]').click()`);
+  await waitDom(`!!document.querySelector('#doc-edit-form')`);
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = input.value + '\\n\\n这段不会被保存'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await evaluate(`document.querySelector('[data-action="cancel-doc-edit"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-doc-discard"]')`);
+  check('cancel with changes asks for confirmation', true);
+  await evaluate(`document.querySelector('.overlay.open [data-action="confirm-doc-discard"]').click()`);
+  await waitDom(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page')`);
+  check('discard returns to preview without saving', (await evaluate(`!document.querySelector('.doc-content')?.innerText.includes('这段不会被保存')`)) === true);
+
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {
   check('test harness completed', false, error.stack || String(error));

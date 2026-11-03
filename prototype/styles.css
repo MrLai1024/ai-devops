@@ -1673,3 +1673,19 @@ tr.row-click { cursor: pointer; }
   .task-page-title { font-size: 18px; }
   .task-composer-hint { display: none; }
 }
+
+.doc-edit-meta { padding: 16px; margin-bottom: 12px; }
+.doc-edit-meta .field-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(140px, 1fr); gap: 12px; }
+.doc-format-toolbar { padding: 7px 9px; margin-bottom: 12px; position: sticky; top: 60px; z-index: 4; }
+.doc-tool-btn { padding: 5px 8px; border: 1px solid #e2eaf2; border-radius: 7px; background: #fff; color: #475569; font-family: inherit; font-size: 10.5px; font-weight: 650; cursor: pointer; }
+.doc-tool-btn:hover { border-color: #bae6fd; background: #f8fcff; color: #0369a1; }
+.doc-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.doc-pane { display: flex; flex-direction: column; overflow: hidden; }
+.doc-pane-head { padding: 8px 12px; border-bottom: 1px solid #eef4f8; background: #fbfdff; color: #8da0b5; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+.doc-source { width: 100%; min-height: 520px; padding: 14px 16px; border: 0; outline: none; resize: vertical; background: #fff; color: #334155; font-family: var(--mono); font-size: 12px; line-height: 1.75; }
+.doc-preview { min-height: 520px; max-height: 70vh; overflow: auto; padding: 16px 18px; }
+.doc-edit-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 10.5px; color: #94a3b8; }
+@media (max-width: 1000px) {
+  .doc-split { grid-template-columns: 1fr; }
+  .doc-source, .doc-preview { min-height: 320px; }
+}

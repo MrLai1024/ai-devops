@@ -151,6 +151,66 @@
     return html.join('');
   }
 
+  function applyDocFormat(format) {
+    const input = $('#doc-content-input');
+    if (!input) return;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const selected = input.value.slice(start, end);
+    const insert = (before, after = '', placeholder = '') => {
+      const text = selected || placeholder;
+      input.setRangeText(`${before}${text}${after}`, start, end, 'end');
+      input.focus();
+      input.setSelectionRange(start + before.length, start + before.length + text.length);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const prefixes = { h1: '# ', h2: '## ', ul: '- ', ol: '1. ', quote: '> ' };
+    if (prefixes[format]) { insert(prefixes[format], '', '内容'); return; }
+    if (format === 'bold') { insert('**', '**', '加粗文本'); return; }
+    if (format === 'italic') { insert('*', '*', '斜体文本'); return; }
+    if (format === 'strike') { insert('~~', '~~', '删除线'); return; }
+    if (format === 'inline-code') { insert('`', '`', '代码'); return; }
+    if (format === 'code') { insert('```\n', '\n```', '代码'); return; }
+    if (format === 'link') { insert('[', '](https://)', '链接文本'); return; }
+    if (format === 'table') { insert('| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |', ''); return; }
+    if (format === 'hr') { insert('\n---\n', ''); return; }
+    if (format === 'undo') { undoDocEdit(); return; }
+    if (format === 'redo') { redoDocEdit(); return; }
+  }
+
+  function pushDocHistory(value, start, end) {
+    const last = state.docHistory[state.docHistory.length - 1];
+    if (last && last.value === value) return;
+    state.docHistory.push({ value, start, end });
+    if (state.docHistory.length > 100) state.docHistory.shift();
+    state.docRedo = [];
+  }
+
+  function applyDocEditorValue(snapshot) {
+    const input = $('#doc-content-input');
+    if (!input) return;
+    input.value = snapshot.value;
+    input.focus();
+    input.setSelectionRange(snapshot.start, snapshot.end);
+    const preview = $('#doc-preview');
+    if (preview) preview.innerHTML = renderMarkdown(snapshot.value);
+    const count = $('#doc-word-count');
+    if (count) count.textContent = `字数 ${snapshot.value.replace(/\s/g, '').length}`;
+  }
+
+  function undoDocEdit() {
+    if (state.docHistory.length <= 1) return;
+    state.docRedo.push(state.docHistory.pop());
+    applyDocEditorValue(state.docHistory[state.docHistory.length - 1]);
+  }
+
+  function redoDocEdit() {
+    const next = state.docRedo.pop();
+    if (!next) return;
+    state.docHistory.push(next);
+    applyDocEditorValue(next);
+  }
+
   function toneFor(status) {
     const s = String(status);
     if (['成功', '健康', '活跃', '发布', '已发布', '已完成', '已处理', '已启用', '低', 'SUCCEEDED', 'APPROVED', 'RELEASED', '待发布', '已批准', '进行中'].includes(s)) return 'success';
@@ -2552,6 +2612,37 @@ func Next(state State, picked bool) State {
     </div>`;
   }
 
+  function renderDocEditor(doc, info) {
+    const reqs = projectRequirements(doc.projectId);
+    state.docBaseline = { title: doc.title, type: doc.type, requirementId: doc.requirementId || '', content: doc.content };
+    state.docHistory = [{ value: doc.content, start: 0, end: 0 }];
+    state.docRedo = [];
+    const toolbar = [
+      ['h1', 'H1'], ['h2', 'H2'], ['bold', 'B'], ['italic', 'I'], ['strike', 'S'],
+      ['ul', '• 列表'], ['ol', '1. 列表'], ['quote', '引用'], ['inline-code', '`代码`'],
+      ['code', '代码块'], ['link', '链接'], ['table', '表格'], ['hr', '分割线'], ['undo', '撤销'], ['redo', '重做']
+    ];
+    return `<div class="doc-page">
+      <button class="doc-back" type="button" data-action="back-doc-preview" data-id="${doc.id}">← 返回预览</button>
+      ${pageHead('编辑文档', `${doc.id} · ${esc(projectById(doc.projectId)?.name || '')}`, `<button class="btn btn-outline" type="button" data-action="cancel-doc-edit" data-id="${doc.id}">取消</button><button class="btn btn-primary" type="submit" form="doc-edit-form">保存</button>`)}
+      <form id="doc-edit-form" data-form="save-doc" data-id="${doc.id}">
+        <div class="card doc-edit-meta">
+          <div class="field-row">
+            <div class="field"><label for="doc-title">文档标题</label><input id="doc-title" name="title" class="input" required maxlength="80" value="${esc(doc.title)}"></div>
+            <div class="field"><label for="doc-type">文档类型</label><select id="doc-type" name="type" class="select">${docTypeOptions.map((type) => `<option ${doc.type === type ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
+          </div>
+          <div class="field"><label for="doc-requirement">关联需求（可选）</label><select id="doc-requirement" name="requirementId" class="select"><option value="">不关联</option>${reqs.map((req) => `<option value="${req.id}" ${doc.requirementId === req.id ? 'selected' : ''}>${esc(req.id)} · ${esc(req.title)}</option>`).join('')}</select></div>
+        </div>
+        <div class="card doc-toolbar doc-format-toolbar">${toolbar.map(([format, label]) => `<button class="doc-tool-btn" type="button" data-action="doc-format" data-format="${format}" title="${label}">${label}</button>`).join('')}</div>
+        <div class="doc-split">
+          <div class="card doc-pane"><div class="doc-pane-head">Markdown</div><textarea id="doc-content-input" name="content" class="doc-source" spellcheck="false">${esc(doc.content)}</textarea></div>
+          <div class="card doc-pane"><div class="doc-pane-head">实时预览</div><div id="doc-preview" class="doc-content doc-preview">${renderMarkdown(doc.content)}</div></div>
+        </div>
+        <div class="doc-edit-foot"><span id="doc-word-count">字数 ${doc.content.replace(/\s/g, '').length}</span><span class="muted">保存后会重新索引；已发布文档会同步更新平台总库。</span></div>
+      </form>
+    </div>`;
+  }
+
   function renderKnowledge() {
     const project = currentProject();
     const projectCount = projectDocs(project.id).length;
@@ -3920,6 +4011,10 @@ func Next(state State, picked bool) State {
         if (action === 'open-doc-page') { navigate(target.dataset.scope === 'global' ? `#/knowledge/global/${id}` : `#/knowledge/${id}`); return; }
         if (action === 'back-to-knowledge') { state.knowledgeTab = target.dataset.tab || 'project'; navigate('#/knowledge'); return; }
         if (action === 'edit-doc') { navigate(`#/knowledge/${id}/edit`); return; }
+        if (action === 'doc-format') { applyDocFormat(target.dataset.format); return; }
+        if (action === 'cancel-doc-edit') { cancelDocEdit(id); return; }
+        if (action === 'back-doc-preview') { navigate(`#/knowledge/${id}`); return; }
+        if (action === 'confirm-doc-discard') { navigate(`#/knowledge/${id}`); return; }
         if (action === 'rebuild-index') { rebuildIndex(); return; }
         if (action === 'pipeline-filter') { state.pipelineFilter = target.dataset.filter; renderMain(); return; }
         if (action === 'open-run') { openPipelineDrawer(id); return; }
@@ -3990,6 +4085,15 @@ func Next(state State, picked bool) State {
         rerenderPreserve('doc-search');
         return;
       }
+      if (id === 'doc-content-input') {
+        const value = event.target.value;
+        const preview = $('#doc-preview');
+        if (preview) preview.innerHTML = renderMarkdown(value);
+        const count = $('#doc-word-count');
+        if (count) count.textContent = `字数 ${value.replace(/\s/g, '').length}`;
+        pushDocHistory(value, event.target.selectionStart, event.target.selectionEnd);
+        return;
+      }
       if (id === 'cap-search') { state.capSearch = event.target.value; rerenderPreserve('cap-search'); return; }
       if (id === 'audit-search') { state.auditSearch = event.target.value; rerenderPreserve('audit-search'); return; }
     });
@@ -4014,6 +4118,7 @@ func Next(state State, picked bool) State {
       else if (type === 'new-release') submitRelease(form);
       else if (type === 'repo-settings') submitRepoSettings(form);
       else if (type === 'run-pipeline') submitPipeline(form);
+      else if (type === 'save-doc') submitDocEdit(form);
       else if (type === 'mcp-test') submitMcpTest(form);
       else if (type === 'new-user') submitUser(form);
       else if (type === 'quota') { closeOverlay(); toast('配额已更新（演示）。', 'success'); audit('调整项目配额', form.querySelector('[name="cpu"]')?.value || 'quota', '成功'); renderMain(); }
@@ -4704,6 +4809,52 @@ func Next(state State, picked bool) State {
       run.logs += `\n[${nowTime()}] build completed\n[${nowTime()}] tests passed\n[${nowTime()}] image signed\n[${nowTime()}] deploy test succeeded\n[${nowTime()}] smoke passed`;
       if (state.route === '#/pipelines') renderMain();
     }, 2600);
+  }
+
+  function submitDocEdit(form) {
+    const doc = docById(form.dataset.id);
+    if (!doc) return;
+    const data = new FormData(form);
+    const title = String(data.get('title') || '').trim();
+    const type = String(data.get('type') || '');
+    const requirementId = String(data.get('requirementId') || '');
+    const content = String(data.get('content') || '');
+    if (!title) { toast('请填写文档标题。', 'warning'); return; }
+    if (requirementId && !REQUIREMENTS.some((item) => item.id === requirementId && item.projectId === doc.projectId)) { toast('关联需求不属于当前项目。', 'warning'); return; }
+    doc.title = title;
+    doc.type = docTypeOptions.includes(type) ? type : doc.type;
+    doc.requirementId = requirementId || null;
+    doc.content = content;
+    doc.updated = nowTime();
+    doc.updatedBy = '张明';
+    doc.status = '索引中';
+    audit('更新文档', doc.id, '成功', { after: { title: doc.title, type: doc.type, requirementId: doc.requirementId } });
+    navigate(`#/knowledge/${doc.id}`);
+    toast('文档已保存，正在重新索引。', 'success', '文档已保存');
+    setTimeout(() => {
+      const target = docById(doc.id);
+      if (!target) return;
+      target.status = '已索引';
+      if (state.route === `#/knowledge/${doc.id}`) renderMain();
+    }, 1200);
+  }
+
+  function cancelDocEdit(id) {
+    const form = $('#doc-edit-form');
+    const doc = docById(id);
+    if (!form || !doc) { navigate(`#/knowledge/${id}`); return; }
+    const data = new FormData(form);
+    const baseline = state.docBaseline || {};
+    const changed = String(data.get('title') || '') !== (baseline.title || '') ||
+      String(data.get('type') || '') !== (baseline.type || '') ||
+      String(data.get('requirementId') || '') !== (baseline.requirementId || '') ||
+      String(data.get('content') || '') !== (baseline.content || '');
+    if (!changed) { navigate(`#/knowledge/${id}`); return; }
+    openPanel({
+      title: '放弃修改？', sub: `${doc.id} · 未保存的修改将丢失`, variant: 'modal',
+      body: '<div class="release-note"><b>当前文档有未保存的修改。</b><br>放弃后内容会恢复到最近一次保存的版本。</div>',
+      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">继续编辑</button><button class="btn btn-danger" type="button" data-action="confirm-doc-discard" data-id="${doc.id}">放弃修改</button>`
+    });
   }
 
   function submitMcpTest(form) {
