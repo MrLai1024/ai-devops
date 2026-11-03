@@ -226,6 +226,84 @@ try {
   await waitDom(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page')`);
   check('discard returns to preview without saving', (await evaluate(`!document.querySelector('.doc-content')?.innerText.includes('这段不会被保存')`)) === true);
 
+  await evaluate(`document.querySelector('[data-action="edit-doc"]').click()`);
+  await waitDom(`location.hash === '#/knowledge/doc-1/edit' && !!document.querySelector('#doc-edit-form')`);
+
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = 'first line\\nsecond line'; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); input.setSelectionRange(3, 3); return true; })()`);
+  await sleep(600);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="h2"]').click()`);
+  await sleep(150);
+  check('heading format is line-aware from mid-line', (await evaluate(`document.querySelector('#doc-content-input')?.value === '## first line\\nsecond line'`)) === true);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="undo"]').click()`);
+  await sleep(120);
+  check('undo restores previous markdown', (await evaluate(`document.querySelector('#doc-content-input')?.value === 'first line\\nsecond line'`)) === true);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="redo"]').click()`);
+  await sleep(120);
+  check('redo restores formatted markdown', (await evaluate(`document.querySelector('#doc-content-input')?.value === '## first line\\nsecond line'`)) === true);
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.focus(); input.setSelectionRange(0, 0); input.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true })); return true; })()`);
+  await sleep(120);
+  check('ctrl+z uses the editor history', (await evaluate(`document.querySelector('#doc-content-input')?.value === 'first line\\nsecond line'`)) === true);
+
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = 'one\\ntwo\\nthree'; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); input.setSelectionRange(0, input.value.length); return true; })()`);
+  await sleep(120);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="ul"]').click()`);
+  await sleep(120);
+  check('list format prefixes every selected line', (await evaluate(`document.querySelector('#doc-content-input')?.value === '- one\\n- two\\n- three'`)) === true);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="ul"]').click()`);
+  await sleep(120);
+  check('list format toggles off when every line is a list', (await evaluate(`document.querySelector('#doc-content-input')?.value === 'one\\ntwo\\nthree'`)) === true);
+
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = '前置文本'; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); input.setSelectionRange(2, 2); return true; })()`);
+  await sleep(120);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="code"]').click()`);
+  await sleep(180);
+  const codeBlockState = await evaluate(`(() => { const value = document.querySelector('#doc-content-input')?.value || ''; return { value, pre: !!document.querySelector('#doc-preview pre code'), html: document.querySelector('#doc-preview')?.innerHTML.slice(0, 200) || '' }; })()`);
+  check('code template inserts a block at mid-line', codeBlockState.value.startsWith('```') && codeBlockState.value.includes('```\n\n前置文本') && codeBlockState.pre, JSON.stringify(codeBlockState));
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = '表格前置'; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); input.setSelectionRange(2, 2); return true; })()`);
+  await sleep(120);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="table"]').click()`);
+  await sleep(180);
+  const tableBlockState = await evaluate(`(() => { const value = document.querySelector('#doc-content-input')?.value || ''; return { value, table: !!document.querySelector('#doc-preview table'), html: document.querySelector('#doc-preview')?.innerHTML.slice(0, 200) || '' }; })()`);
+  check('table template inserts a block at mid-line', tableBlockState.value.startsWith('| 列 1 | 列 2 |') && tableBlockState.value.includes('\n\n表格前置') && tableBlockState.table, JSON.stringify(tableBlockState));
+
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = '| A | B |\\n| --- | --- |\\n| 1 | 2 | 多余尾部 |'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await sleep(180);
+  check('table overflow text stays in the last cell', (await evaluate(`(() => { const cell = document.querySelector('#doc-preview tbody tr td:last-child'); return !!cell && cell.innerText.includes('多余尾部') && cell.innerText.includes('2'); })()`)) === true);
+
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = input.value + '\\n\\n未保存内容'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await evaluate(`document.querySelector('[data-action="back-doc-preview"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-doc-discard"]')`);
+  check('back-to-preview guards unsaved changes', (await evaluate(`location.hash === '#/knowledge/doc-1/edit'`)) === true);
+  await evaluate(`document.querySelector('[data-action="continue-doc-edit"]').click()`);
+  await waitDom(`!document.querySelector('.overlay.open') && !!document.querySelector('#doc-edit-form')`);
+  await evaluate(`document.querySelector('.sidebar [data-action="nav"][data-route="#/requirements"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-doc-discard"]')`);
+  check('sidebar navigation guards unsaved changes', (await evaluate(`location.hash === '#/knowledge/doc-1/edit'`)) === true);
+  await evaluate(`document.querySelector('[data-action="continue-doc-edit"]').click()`);
+  await waitDom(`!document.querySelector('.overlay.open') && !!document.querySelector('#doc-edit-form')`);
+  await evaluate(`history.back()`);
+  await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-doc-discard"]')`);
+  check('browser back guards unsaved changes', (await evaluate(`location.hash === '#/knowledge/doc-1/edit'`)) === true);
+  await evaluate(`document.querySelector('[data-action="continue-doc-edit"]').click()`);
+  await waitDom(`!document.querySelector('.overlay.open') && !!document.querySelector('#doc-edit-form')`);
+  await evaluate(`document.querySelector('[data-action="cancel-doc-edit"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-doc-discard"]')`);
+  await evaluate(`document.querySelector('.overlay.open [data-action="confirm-doc-discard"]').click()`);
+  await waitDom(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page')`);
+  check('dirty guard discard returns to preview', true);
+
+  await evaluate(`location.hash = '#/knowledge/doc-3/edit'`);
+  await waitDom(`document.querySelector('.empty h2')?.innerText.includes('文档不存在')`);
+  check('cross-project edit is rejected without switching project', (await evaluate(`document.querySelector('.sidebar .project-meta b')?.textContent === '订单中心' && !document.querySelector('#doc-edit-form')`)) === true);
+
+  await evaluate(`location.hash = '#/knowledge/doc-1/edit'`);
+  await waitDom(`location.hash === '#/knowledge/doc-1/edit' && !!document.querySelector('#doc-edit-form')`);
+  check('own document edit still opens', true);
+  await evaluate(`(() => { const form = document.querySelector('#doc-edit-form'); form.requestSubmit(); form.requestSubmit(); return true; })()`);
+  await waitDom(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page')`);
+  await waitDom(`document.querySelector('.doc-page')?.innerText.includes('已索引')`, 5000);
+  check('double submit is guarded and save completes', true);
+
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {
   check('test harness completed', false, error.stack || String(error));

@@ -136,7 +136,9 @@
           const rows = [];
           while (index < lines.length && lines[index].includes('|')) {
             const cells = parseRow(lines[index]);
-            rows.push(headers.map((_, cellIndex) => cells[cellIndex] || ''));
+            const normalized = headers.map((_, cellIndex) => cells[cellIndex] || '');
+            if (cells.length > headers.length) normalized[headers.length - 1] = cells.slice(headers.length - 1).join(' | ');
+            rows.push(normalized);
             index += 1;
           }
           html.push(`<div class="doc-table-wrap"><table><thead><tr>${headers.map((cell) => `<th>${renderInlineMarkdown(cell)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
@@ -151,9 +153,71 @@
     return html.join('');
   }
 
+  function docLineRange(value, start, end) {
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    let lineEnd = end;
+    if (end > start && value[end - 1] === '\n') {
+      lineEnd = end - 1;
+    } else if (lineEnd < value.length && value[lineEnd] !== '\n') {
+      const nextBreak = value.indexOf('\n', lineEnd);
+      lineEnd = nextBreak === -1 ? value.length : nextBreak;
+    }
+    return { lineStart, lineEnd };
+  }
+
+  function applyDocLineFormat(format) {
+    const input = $('#doc-content-input');
+    if (!input) return;
+    const value = input.value;
+    const { lineStart, lineEnd } = docLineRange(value, input.selectionStart, input.selectionEnd);
+    const block = value.slice(lineStart, lineEnd);
+    const lines = block.split('\n');
+    const active = lines.filter((line) => line.trim());
+    if (!active.length) return;
+    const prefixes = { h1: '# ', h2: '## ', ul: '- ', ol: '1. ', quote: '> ' };
+    const blockMarker = /^(?:#{1,6}\s+|[-*]\s+|\d+\.\s+|>\s?)/;
+    const listMarkers = { ul: /^[-*]\s+/, ol: /^\d+\.\s+/ };
+    const toggle = !!listMarkers[format] && active.every((line) => listMarkers[format].test(line));
+    const nextLines = lines.map((line) => {
+      if (!line.trim()) return line;
+      if (toggle) return line.replace(listMarkers[format], '');
+      return `${prefixes[format]}${line.replace(blockMarker, '')}`;
+    });
+    const nextBlock = nextLines.join('\n');
+    input.setRangeText(nextBlock, lineStart, lineEnd, 'end');
+    input.focus();
+    input.setSelectionRange(lineStart, lineStart + nextBlock.length);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function insertDocBlock(template, placeholder = '') {
+    const input = $('#doc-content-input');
+    if (!input) return;
+    const value = input.value;
+    const start = input.selectionStart;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const before = value.slice(0, lineStart);
+    const following = value.slice(lineStart);
+    const prefix = before ? (before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n') : '';
+    const suffix = following ? (following.startsWith('\n\n') ? '' : following.startsWith('\n') ? '\n' : '\n\n') : '';
+    input.setRangeText(`${prefix}${template}${suffix}`, lineStart, lineStart, 'end');
+    const templateStart = lineStart + prefix.length;
+    const caret = placeholder ? templateStart + template.indexOf(placeholder) : templateStart + template.length;
+    input.focus();
+    input.setSelectionRange(caret, caret + (placeholder ? placeholder.length : 0));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   function applyDocFormat(format) {
     const input = $('#doc-content-input');
     if (!input) return;
+    const lineFormats = ['h1', 'h2', 'ul', 'ol', 'quote'];
+    if (lineFormats.includes(format)) { applyDocLineFormat(format); return; }
+    if (format === 'undo') { undoDocEdit(); return; }
+    if (format === 'redo') { redoDocEdit(); return; }
+    if (format === 'code') { insertDocBlock('```\n代码\n```', '代码'); return; }
+    if (format === 'table') { insertDocBlock('| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |', '内容'); return; }
+    if (format === 'hr') { insertDocBlock('---'); return; }
     const start = input.selectionStart;
     const end = input.selectionEnd;
     const selected = input.value.slice(start, end);
@@ -164,29 +228,38 @@
       input.setSelectionRange(start + before.length, start + before.length + text.length);
       input.dispatchEvent(new Event('input', { bubbles: true }));
     };
-    const prefixes = { h1: '# ', h2: '## ', ul: '- ', ol: '1. ', quote: '> ' };
-    if (prefixes[format]) { insert(prefixes[format], '', '内容'); return; }
     if (format === 'bold') { insert('**', '**', '加粗文本'); return; }
     if (format === 'italic') { insert('*', '*', '斜体文本'); return; }
     if (format === 'strike') { insert('~~', '~~', '删除线'); return; }
     if (format === 'inline-code') { insert('`', '`', '代码'); return; }
-    if (format === 'code') { insert('```\n', '\n```', '代码'); return; }
     if (format === 'link') { insert('[', '](https://)', '链接文本'); return; }
-    if (format === 'table') { insert('| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |', ''); return; }
-    if (format === 'hr') { insert('\n---\n', ''); return; }
-    if (format === 'undo') { undoDocEdit(); return; }
-    if (format === 'redo') { redoDocEdit(); return; }
   }
 
   function pushDocHistory(value, start, end) {
+    const now = Date.now();
     const last = state.docHistory[state.docHistory.length - 1];
-    if (last && last.value === value) return;
-    state.docHistory.push({ value, start, end });
-    if (state.docHistory.length > 100) state.docHistory.shift();
+    if (last && last.value === value) {
+      last.start = start;
+      last.end = end;
+      return;
+    }
+    if (last && state.docHistory.length > 1 && now - (last.at || 0) < 500) {
+      last.value = value;
+      last.start = start;
+      last.end = end;
+      last.at = now;
+    } else {
+      state.docHistory.push({ value, start, end, at: now });
+      if (state.docHistory.length > 50) state.docHistory.shift();
+    }
     state.docRedo = [];
   }
 
   function applyDocEditorValue(snapshot) {
+    if (state.docPreviewTimer) {
+      clearTimeout(state.docPreviewTimer);
+      state.docPreviewTimer = null;
+    }
     const input = $('#doc-content-input');
     if (!input) return;
     input.value = snapshot.value;
@@ -207,6 +280,7 @@
   function redoDocEdit() {
     const next = state.docRedo.pop();
     if (!next) return;
+    next.at = Date.now();
     state.docHistory.push(next);
     applyDocEditorValue(next);
   }
@@ -1293,6 +1367,11 @@ func Next(state State, picked bool) State {
     docBaseline: null,
     docHistory: [],
     docRedo: [],
+    docPreviewTimer: null,
+    docSaving: false,
+    docSaveTimer: null,
+    pendingDocRoute: null,
+    docLeaveApproved: false,
     membersPage: 1,
     capSearch: '',
     capRisk: 'all',
@@ -1462,7 +1541,7 @@ func Next(state State, picked bool) State {
 
   function syncDocProject() {
     const info = docRouteInfo();
-    if (!info || info.scope === 'global') return null;
+    if (!info || info.scope === 'global' || info.edit) return null;
     const doc = docById(info.docId);
     if (!doc) return null;
     state.projectId = doc.projectId;
@@ -2614,9 +2693,14 @@ func Next(state State, picked bool) State {
 
   function renderDocEditor(doc, info) {
     const reqs = projectRequirements(doc.projectId);
+    if (state.docPreviewTimer) {
+      clearTimeout(state.docPreviewTimer);
+      state.docPreviewTimer = null;
+    }
     state.docBaseline = { title: doc.title, type: doc.type, requirementId: doc.requirementId || '', content: doc.content };
-    state.docHistory = [{ value: doc.content, start: 0, end: 0 }];
+    state.docHistory = [{ value: doc.content, start: 0, end: 0, at: Date.now() }];
     state.docRedo = [];
+    state.pendingDocRoute = null;
     const toolbar = [
       ['h1', 'H1'], ['h2', 'H2'], ['bold', 'B'], ['italic', 'I'], ['strike', 'S'],
       ['ul', '• 列表'], ['ol', '1. 列表'], ['quote', '引用'], ['inline-code', '`代码`'],
@@ -3194,6 +3278,7 @@ func Next(state State, picked bool) State {
     overlay.innerHTML = '';
     overlay.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('no-scroll');
+    state.pendingDocRoute = null;
   }
 
   function toast(message, type = 'success', title = '') {
@@ -4013,8 +4098,16 @@ func Next(state State, picked bool) State {
         if (action === 'edit-doc') { navigate(`#/knowledge/${id}/edit`); return; }
         if (action === 'doc-format') { applyDocFormat(target.dataset.format); return; }
         if (action === 'cancel-doc-edit') { cancelDocEdit(id); return; }
-        if (action === 'back-doc-preview') { navigate(`#/knowledge/${id}`); return; }
-        if (action === 'confirm-doc-discard') { navigate(`#/knowledge/${id}`); return; }
+        if (action === 'back-doc-preview') { cancelDocEdit(id); return; }
+        if (action === 'continue-doc-edit') { state.pendingDocRoute = null; closeOverlay(); return; }
+        if (action === 'confirm-doc-discard') {
+          const targetRoute = state.pendingDocRoute || `#/knowledge/${id}`;
+          state.pendingDocRoute = null;
+          state.docLeaveApproved = true;
+          closeOverlay();
+          navigate(targetRoute, { force: true });
+          return;
+        }
         if (action === 'rebuild-index') { rebuildIndex(); return; }
         if (action === 'pipeline-filter') { state.pipelineFilter = target.dataset.filter; renderMain(); return; }
         if (action === 'open-run') { openPipelineDrawer(id); return; }
@@ -4087,11 +4180,15 @@ func Next(state State, picked bool) State {
       }
       if (id === 'doc-content-input') {
         const value = event.target.value;
-        const preview = $('#doc-preview');
-        if (preview) preview.innerHTML = renderMarkdown(value);
-        const count = $('#doc-word-count');
-        if (count) count.textContent = `字数 ${value.replace(/\s/g, '').length}`;
-        pushDocHistory(value, event.target.selectionStart, event.target.selectionEnd);
+        if (!event.isComposing) pushDocHistory(value, event.target.selectionStart, event.target.selectionEnd);
+        if (state.docPreviewTimer) clearTimeout(state.docPreviewTimer);
+        state.docPreviewTimer = setTimeout(() => {
+          state.docPreviewTimer = null;
+          const preview = $('#doc-preview');
+          if (preview) preview.innerHTML = renderMarkdown(value);
+          const count = $('#doc-word-count');
+          if (count) count.textContent = `字数 ${value.replace(/\s/g, '').length}`;
+        }, 80);
         return;
       }
       if (id === 'cap-search') { state.capSearch = event.target.value; rerenderPreserve('cap-search'); return; }
@@ -4125,6 +4222,13 @@ func Next(state State, picked bool) State {
     });
 
     document.addEventListener('keydown', (event) => {
+      if (event.target.id === 'doc-content-input' && !event.isComposing) {
+        const ctrl = event.ctrlKey || event.metaKey;
+        const key = String(event.key).toLowerCase();
+        if (ctrl && !event.shiftKey && key === 'z') { event.preventDefault(); undoDocEdit(); return; }
+        if (ctrl && event.shiftKey && key === 'z') { event.preventDefault(); redoDocEdit(); return; }
+        if (ctrl && key === 'y') { event.preventDefault(); redoDocEdit(); return; }
+      }
       if (event.key === 'Escape') {
         if ($('#overlay').classList.contains('open')) { closeOverlay(); return; }
         closeDropdowns();
@@ -4141,8 +4245,25 @@ func Next(state State, picked bool) State {
       if (!event.target.closest('.avatar-wrap')) $('#avatar-menu')?.classList.remove('open');
     });
 
+    window.addEventListener('beforeunload', (event) => {
+      if (!docEditDirty()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    });
+
     window.addEventListener('hashchange', () => {
-      state.route = location.hash || '#/projects';
+      const next = location.hash || '#/projects';
+      if (state.docLeaveApproved) {
+        state.docLeaveApproved = false;
+        state.route = next;
+        render();
+        return;
+      }
+      if (guardDocNavigation(next)) {
+        if (location.hash !== state.route) history.replaceState(null, '', state.route);
+        return;
+      }
+      state.route = next;
       render();
     });
   }
@@ -4821,6 +4942,8 @@ func Next(state State, picked bool) State {
     const content = String(data.get('content') || '');
     if (!title) { toast('请填写文档标题。', 'warning'); return; }
     if (requirementId && !REQUIREMENTS.some((item) => item.id === requirementId && item.projectId === doc.projectId)) { toast('关联需求不属于当前项目。', 'warning'); return; }
+    if (state.docSaving) { toast('文档正在保存，请稍候。', 'info'); return; }
+    state.docSaving = true;
     doc.title = title;
     doc.type = docTypeOptions.includes(type) ? type : doc.type;
     doc.requirementId = requirementId || null;
@@ -4828,33 +4951,64 @@ func Next(state State, picked bool) State {
     doc.updated = nowTime();
     doc.updatedBy = '张明';
     doc.status = '索引中';
+    state.docBaseline = { title: doc.title, type: doc.type, requirementId: doc.requirementId || '', content: doc.content };
     audit('更新文档', doc.id, '成功', { after: { title: doc.title, type: doc.type, requirementId: doc.requirementId } });
-    navigate(`#/knowledge/${doc.id}`);
-    toast('文档已保存，正在重新索引。', 'success', '文档已保存');
-    setTimeout(() => {
+    if (state.docSaveTimer) clearTimeout(state.docSaveTimer);
+    const timerId = setTimeout(() => {
+      if (state.docSaveTimer !== timerId) return;
+      state.docSaveTimer = null;
+      state.docSaving = false;
       const target = docById(doc.id);
       if (!target) return;
       target.status = '已索引';
       if (state.route === `#/knowledge/${doc.id}`) renderMain();
     }, 1200);
+    state.docSaveTimer = timerId;
+    navigate(`#/knowledge/${doc.id}`, { force: true });
+    toast('文档已保存，正在重新索引。', 'success', '文档已保存');
   }
 
-  function cancelDocEdit(id) {
+  function docEditDirty() {
+    const info = docRouteInfo();
+    if (!info || !info.edit) return false;
     const form = $('#doc-edit-form');
-    const doc = docById(id);
-    if (!form || !doc) { navigate(`#/knowledge/${id}`); return; }
+    const doc = info ? docById(info.docId) : null;
+    if (!form || !doc) return false;
     const data = new FormData(form);
     const baseline = state.docBaseline || {};
-    const changed = String(data.get('title') || '') !== (baseline.title || '') ||
+    return String(data.get('title') || '') !== (baseline.title || '') ||
       String(data.get('type') || '') !== (baseline.type || '') ||
       String(data.get('requirementId') || '') !== (baseline.requirementId || '') ||
       String(data.get('content') || '') !== (baseline.content || '');
-    if (!changed) { navigate(`#/knowledge/${id}`); return; }
+  }
+
+  function openDocDiscardModal(targetRoute) {
+    const info = docRouteInfo();
+    const doc = info ? docById(info.docId) : null;
+    state.pendingDocRoute = targetRoute;
     openPanel({
-      title: '放弃修改？', sub: `${doc.id} · 未保存的修改将丢失`, variant: 'modal',
+      title: '放弃修改？', sub: `${esc(doc?.id || '')} · 未保存的修改将丢失`, variant: 'modal',
       body: '<div class="release-note"><b>当前文档有未保存的修改。</b><br>放弃后内容会恢复到最近一次保存的版本。</div>',
-      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">继续编辑</button><button class="btn btn-danger" type="button" data-action="confirm-doc-discard" data-id="${doc.id}">放弃修改</button>`
+      footer: `<button class="btn btn-outline" type="button" data-action="continue-doc-edit">继续编辑</button><button class="btn btn-danger" type="button" data-action="confirm-doc-discard" data-id="${esc(doc?.id || '')}">放弃修改</button>`
     });
+  }
+
+  function guardDocNavigation(route) {
+    if (!docEditDirty()) return false;
+    if (state.pendingDocRoute) {
+      state.pendingDocRoute = route;
+      return true;
+    }
+    openDocDiscardModal(route);
+    return true;
+  }
+
+  function cancelDocEdit(id) {
+    const doc = docById(id);
+    if (!doc) return;
+    const target = `#/knowledge/${id}`;
+    if (!docEditDirty()) { navigate(target, { force: true }); return; }
+    openDocDiscardModal(target);
   }
 
   function submitMcpTest(form) {
@@ -4913,11 +5067,14 @@ func Next(state State, picked bool) State {
   }
 
   /* ---------------- router ---------------- */
-  function navigate(route) {
-    closeOverlay();
+  function navigate(route, options = {}) {
     closeDropdowns();
-    if (location.hash === route) render();
-    else location.hash = route;
+    if (!options.force && route !== state.route && guardDocNavigation(route)) return;
+    closeOverlay();
+    if (location.hash === route) {
+      state.docLeaveApproved = false;
+      render();
+    } else location.hash = route;
   }
 
   function init() {
