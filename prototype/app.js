@@ -1022,10 +1022,42 @@ func Next(state State, picked bool) State {
   MRS.forEach((mr) => Object.assign(mr, MR_EXTRAS[mr.id] || { description: '', requirementId: null, comments: [] }));
 
   const DOCS = [
-    { id: 'doc-1', projectId: 'p-order', title: '订单履约状态机说明', type: '设计文档', updated: '10:12', status: '已索引', owner: '张明', content: '# 订单履约状态机说明\n\n本文描述订单从创建到签收的状态流转、异常分支与补偿策略。\n\n## 状态\n- CREATED\n- PAID\n- PICKED\n- SHIPPED\n- DELIVERED\n- CANCELLED\n\n## 异常\n履约超时、承运商异常、仓库缺货统一进入 EXCEPTION 状态，由自动分派任务处理。' },
-    { id: 'doc-2', projectId: 'p-order', title: '履约超时预警阈值配置', type: '运行手册', updated: '09:48', status: '已索引', owner: '陈晨', content: '# 履约超时预警阈值配置\n\n1. 在订单中心 > 履约配置中新增阈值。\n2. 支持按仓库、承运商、业务线维度覆盖。\n3. 阈值变更即时生效，保留 30 天历史。' },
-    { id: 'doc-3', projectId: 'p-customer', title: '客户分层运营 SOP', type: '流程文档', updated: '昨天', status: '已索引', owner: '李娜', content: '# 客户分层运营 SOP\n\n按活跃度、客单价、复购率将客户分为 S/A/B/C 四层，每层配置不同的触达策略。' },
-    { id: 'doc-4', projectId: 'p-support', title: '客服知识库接入说明', type: '设计文档', updated: '10:22', status: '索引中', owner: '王磊', content: '# 客服知识库接入说明\n\n知识库文档经 Embedding 服务写入 Qdrant，问答 Agent 通过 RAG 检索并返回引用。' }
+    {
+      id: 'doc-1', projectId: 'p-order', requirementId: 'RQ-112', title: '订单履约状态机说明', type: '方案设计',
+      owner: '张明', status: '已索引', createdAt: '2026-10-10', updated: '10:12', updatedBy: '张明',
+      published: false, publishedAt: null, publishedBy: null,
+      content: '# 订单履约状态机说明\n\n本文描述订单从创建到签收的状态流转、异常分支与补偿策略。\n\n## 状态\n- CREATED\n- PAID\n- PICKED\n- SHIPPED\n- DELIVERED\n- CANCELLED\n\n## 异常\n履约超时、承运商异常、仓库缺货统一进入 EXCEPTION 状态，由自动分派任务处理。\n\n```text\nCREATED -> PAID -> PICKED -> SHIPPED -> DELIVERED\n```\n\n| 状态 | 触发条件 | 后续动作 |\n| --- | --- | --- |\n| PAID | 支付成功 | 生成拣货任务 |\n| EXCEPTION | 超时或异常 | 自动分派 |'
+    },
+    {
+      id: 'doc-2', projectId: 'p-order', requirementId: 'RQ-101', title: '履约超时预警阈值配置', type: '运行手册',
+      owner: '陈晨', status: '已索引', createdAt: '2026-10-12', updated: '09:48', updatedBy: '陈晨',
+      published: false, publishedAt: null, publishedBy: null,
+      content: '# 履约超时预警阈值配置\n\n1. 在订单中心 > 履约配置中新增阈值。\n2. 支持按仓库、承运商、业务线维度覆盖。\n3. 阈值变更即时生效，保留 30 天历史。\n\n> 默认阈值：履约节点超过 30 分钟未推进即触发预警。'
+    },
+    {
+      id: 'doc-3', projectId: 'p-customer', requirementId: null, title: '客户分层运营 SOP', type: '方案设计',
+      owner: '李娜', status: '已索引', createdAt: '2026-09-20', updated: '昨天', updatedBy: '李娜',
+      published: false, publishedAt: null, publishedBy: null,
+      content: '# 客户分层运营 SOP\n\n按活跃度、客单价、复购率将客户分为 S/A/B/C 四层，每层配置不同的触达策略。\n\n## 分层规则\n- S：近 30 天活跃且客单价 Top 10%\n- A：近 90 天活跃且复购 ≥2 次\n- B：有交易但活跃度一般\n- C：长期未活跃'
+    },
+    {
+      id: 'doc-4', projectId: 'p-support', requirementId: 'RQ-107', title: '客服知识库接入说明', type: '方案设计',
+      owner: '王磊', status: '索引中', createdAt: '2026-10-21', updated: '10:22', updatedBy: '王磊',
+      published: true, publishedAt: '2026-10-23 16:20', publishedBy: '王磊',
+      content: '# 客服知识库接入说明\n\n知识库文档经 Embedding 服务写入 Qdrant，问答 Agent 通过 RAG 检索并返回引用。\n\n## 接入步骤\n1. 文档同步到知识库\n2. 触发增量索引\n3. Agent 检索并返回引用\n\n```json\n{"collection":"support-kb","topK":3}\n```'
+    },
+    {
+      id: 'doc-5', projectId: 'p-order', requirementId: 'RQ-101', title: '订单履约超时预警 PRD', type: '需求规格',
+      owner: '张明', status: '已索引', createdAt: '2026-10-09', updated: '10:20', updatedBy: '张明',
+      published: true, publishedAt: '2026-10-24 09:00', publishedBy: '张明',
+      content: '# 订单履约超时预警 PRD\n\n## 背景\n履约节点超时导致客诉上升，需要实时预警。\n\n## 目标\n- 超时 5 分钟内触发告警\n- 支持按仓库/承运商配置阈值\n- 支持站内通知与邮件\n\n## 验收标准\n1. 告警及时率达到 99%\n2. 阈值变更可追溯\n3. 履约看板可查看预警记录'
+    },
+    {
+      id: 'doc-6', projectId: 'p-customer', requirementId: 'RQ-106', title: '客户分层看板测试方案', type: '测试方案',
+      owner: '李娜', status: '已索引', createdAt: '2026-10-02', updated: '09:30', updatedBy: '李娜',
+      published: false, publishedAt: null, publishedBy: null,
+      content: '# 客户分层看板测试方案\n\n## 测试范围\n- 分层看板数据准确性\n- 筛选与导出\n\n## 用例\n| 场景 | 预期 |\n| --- | --- |\n| 按层筛选 | 仅展示对应客户 |\n| 导出 CSV | 字段完整 |'
+    }
   ];
 
   const METRICS = {
@@ -1113,6 +1145,15 @@ func Next(state State, picked bool) State {
     repoFile: 'README.md',
     repoBranch: 'main',
     mrCommentSeq: 500,
+    knowledgeTab: 'project',
+    knowledgeSearch: '',
+    knowledgeType: 'all',
+    knowledgeReq: 'all',
+    knowledgeSource: 'all',
+    docSeq: 6,
+    docBaseline: null,
+    docHistory: [],
+    docRedo: [],
     membersPage: 1,
     capSearch: '',
     capRisk: 'all',
@@ -1169,6 +1210,8 @@ func Next(state State, picked bool) State {
   const projectRepos = (projectId) => REPOS.filter((item) => item.projectId === projectId);
   const projectMrs = (projectId) => MRS.filter((item) => item.projectId === projectId);
   const projectDocs = (projectId) => DOCS.filter((item) => item.projectId === projectId);
+  const docById = (id) => DOCS.find((item) => item.id === id);
+  const docTypeOptions = ['需求规格', '方案设计', '测试方案', '运行手册', '其他'];
   const currentProject = () => projectById(state.projectId) || PROJECTS[0];
   const currentIteration = () => iterationById(state.iterationId) || projectIterations(state.projectId)[0] || ITERATIONS[0];
 
@@ -1256,6 +1299,22 @@ func Next(state State, picked bool) State {
     return repo;
   }
 
+  const docRouteInfo = () => {
+    const match = state.route.match(/^#\/knowledge\/(?:(global)\/)?([^/?#]+)(\/edit)?\/?$/);
+    if (!match) return null;
+    return { scope: match[1] ? 'global' : 'project', docId: decodeURIComponent(match[2]), edit: !!match[3] };
+  };
+
+  function syncDocProject() {
+    const info = docRouteInfo();
+    if (!info || info.scope === 'global') return null;
+    const doc = docById(info.docId);
+    if (!doc) return null;
+    state.projectId = doc.projectId;
+    state.iterationId = projectById(doc.projectId)?.iterationId || state.iterationId;
+    return doc;
+  }
+
   /* ---------------- shell rendering ---------------- */
   function renderTopbar() {
     const active = moduleForRoute(state.route);
@@ -1269,9 +1328,10 @@ func Next(state State, picked bool) State {
   function renderSidebar() {
     syncTaskProject();
     syncRepoProject();
+    syncDocProject();
     const meta = taskIdFromRoute()
       ? ROUTES[state.taskReturn === 'agents' ? '#/agents' : '#/requirements']
-      : (repoRouteInfo() ? ROUTES['#/code'] : (ROUTES[state.route] || ROUTES['#/projects']));
+      : (repoRouteInfo() ? ROUTES['#/code'] : (docRouteInfo() ? ROUTES['#/knowledge'] : (ROUTES[state.route] || ROUTES['#/projects'])));
     const sidebar = $('#sidebar');
     const shell = $('#shell');
     if (meta.placeholder || meta.sidebar === 'none' || (meta.sidebar === 'project' && !PROJECTS.length)) {
@@ -1350,6 +1410,7 @@ func Next(state State, picked bool) State {
   function renderMain(metaArg) {
     syncTaskProject();
     syncRepoProject();
+    syncDocProject();
     const meta = metaArg || ROUTES[state.route] || ROUTES['#/projects'];
     const main = $('#main');
     const scroll = window.scrollY;
@@ -2340,27 +2401,95 @@ func Next(state State, picked bool) State {
 
   function renderKnowledge() {
     const project = currentProject();
-    return `
-      ${pageHead('知识库', `项目：${esc(project.name)} · 团队知识与交付文档`)}
-      ${codeDocsView()}
-    `;
+    const projectCount = projectDocs(project.id).length;
+    const globalCount = DOCS.filter((doc) => doc.published).length;
+    return `<div class="knowledge-page">
+      ${pageHead('知识库', `项目：${esc(project.name)} · 需求规格、方案设计与交付文档`, `<button class="btn btn-primary" type="button" data-action="new-doc">${icon('plus', 14)} 新建文档</button>`)}
+      <div class="tabs">
+        <button class="tab ${state.knowledgeTab === 'project' ? 'active' : ''}" type="button" data-action="knowledge-tab" data-tab="project">本项目文档 <span class="tab-count">${projectCount}</span></button>
+        <button class="tab ${state.knowledgeTab === 'global' ? 'active' : ''}" type="button" data-action="knowledge-tab" data-tab="global">平台总库 <span class="tab-count">${globalCount}</span></button>
+      </div>
+      ${state.knowledgeTab === 'global' ? renderGlobalDocs() : renderProjectDocs()}
+    </div>`;
   }
 
-  function codeDocsView() {
-    const docs = projectDocs(state.projectId);
-    return `<section class="card"><div class="card-body" style="padding-top:12px;">
-      <div class="flex" style="margin-bottom:12px;"><span class="muted" style="font-size:11px;">文档正文存 OSS，元数据存 PostgreSQL；变更触发 RAG 增量索引。</span><button class="btn btn-outline btn-sm" style="margin-left:auto;" type="button" data-action="rebuild-index">${icon('refresh', 13)} 重建索引</button></div>
+  function docReqCell(doc) {
+    const req = doc.requirementId ? requirementById(doc.requirementId) : null;
+    return req ? `<div class="cell-main"><b>${esc(req.id)}</b><small>${esc(req.title)}</small></div>` : '<span class="muted">未关联</span>';
+  }
+
+  function docSearchMatches(doc) {
+    const query = state.knowledgeSearch.trim().toLowerCase();
+    return !query || `${doc.title}\n${doc.content}`.toLowerCase().includes(query);
+  }
+
+  function renderProjectDocs() {
+    const docs = projectDocs(state.projectId).filter((doc) =>
+      (state.knowledgeType === 'all' || doc.type === state.knowledgeType) &&
+      (state.knowledgeReq === 'all' || (state.knowledgeReq === 'none' ? !doc.requirementId : doc.requirementId === state.knowledgeReq)) &&
+      docSearchMatches(doc));
+    const requirements = projectRequirements(state.projectId);
+    return `<section class="card"><div class="card-body" style="padding-top:14px;">
+      <div class="doc-toolbar">
+        <input id="doc-search" class="input doc-search" type="search" placeholder="搜索标题或正文" value="${esc(state.knowledgeSearch)}" aria-label="搜索文档">
+        <select id="doc-type-filter" class="select" data-action="doc-type-filter" aria-label="按类型筛选">
+          <option value="all" ${state.knowledgeType === 'all' ? 'selected' : ''}>全部类型</option>
+          ${docTypeOptions.map((type) => `<option value="${type}" ${state.knowledgeType === type ? 'selected' : ''}>${type}</option>`).join('')}
+        </select>
+        <select id="doc-req-filter" class="select" data-action="doc-req-filter" aria-label="按需求筛选">
+          <option value="all" ${state.knowledgeReq === 'all' ? 'selected' : ''}>全部需求</option>
+          <option value="none" ${state.knowledgeReq === 'none' ? 'selected' : ''}>未关联</option>
+          ${requirements.map((req) => `<option value="${req.id}" ${state.knowledgeReq === req.id ? 'selected' : ''}>${esc(req.id)} · ${esc(req.title)}</option>`).join('')}
+        </select>
+        <button class="btn btn-outline btn-sm" type="button" data-action="rebuild-index">${icon('refresh', 13)} 重建索引</button>
+      </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>文档</th><th>类型</th><th>Owner</th><th>RAG 状态</th><th>更新</th><th></th></tr></thead>
+        <thead><tr><th>文档</th><th>类型</th><th>关联需求</th><th>Owner</th><th>检索范围</th><th>RAG 状态</th><th>更新</th><th></th></tr></thead>
         <tbody>
-          ${docs.length ? docs.map((doc) => `<tr class="row-click" data-action="open-doc" data-id="${doc.id}" tabindex="0">
+          ${docs.length ? docs.map((doc) => `<tr class="row-click" data-action="open-doc-page" data-id="${doc.id}" data-scope="project" tabindex="0">
             <td><div class="cell-main"><b>${esc(doc.title)}</b><small>${esc(doc.id)}</small></div></td>
             <td>${esc(doc.type)}</td>
+            <td>${docReqCell(doc)}</td>
             <td>${esc(doc.owner)}</td>
+            <td>${doc.published ? '<span class="tag">平台总库</span>' : '<span class="tag">仅本项目</span>'}</td>
             <td>${pill(doc.status)}</td>
             <td class="nowrap">${esc(doc.updated)}</td>
             <td><span class="muted">→</span></td>
-          </tr>`).join('') : `<tr><td colspan="6">${emptyTable('当前项目还没有文档')}</td></tr>`}
+          </tr>`).join('') : `<tr><td colspan="8">${emptyTable('当前筛选下没有文档')}</td></tr>`}
+        </tbody>
+      </table></div>
+    </div></section>`;
+  }
+
+  function renderGlobalDocs() {
+    const sources = PROJECTS.filter((project) => DOCS.some((doc) => doc.published && doc.projectId === project.id));
+    const docs = DOCS.filter((doc) => doc.published)
+      .filter((doc) => state.knowledgeType === 'all' || doc.type === state.knowledgeType)
+      .filter((doc) => state.knowledgeSource === 'all' || doc.projectId === state.knowledgeSource)
+      .filter(docSearchMatches);
+    return `<section class="card"><div class="card-body" style="padding-top:14px;">
+      <div class="doc-toolbar">
+        <input id="doc-search" class="input doc-search" type="search" placeholder="搜索平台总库" value="${esc(state.knowledgeSearch)}" aria-label="搜索平台总库">
+        <select id="doc-type-filter" class="select" data-action="doc-type-filter" aria-label="按类型筛选">
+          <option value="all" ${state.knowledgeType === 'all' ? 'selected' : ''}>全部类型</option>
+          ${docTypeOptions.map((type) => `<option value="${type}" ${state.knowledgeType === type ? 'selected' : ''}>${type}</option>`).join('')}
+        </select>
+        <select id="doc-source-filter" class="select" data-action="doc-source-filter" aria-label="按来源项目筛选">
+          <option value="all" ${state.knowledgeSource === 'all' ? 'selected' : ''}>全部项目</option>
+          ${sources.map((project) => `<option value="${project.id}" ${state.knowledgeSource === project.id ? 'selected' : ''}>${esc(project.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>文档</th><th>类型</th><th>来源项目</th><th>Owner</th><th>更新</th><th></th></tr></thead>
+        <tbody>
+          ${docs.length ? docs.map((doc) => `<tr class="row-click" data-action="open-doc-page" data-id="${doc.id}" data-scope="global" tabindex="0">
+            <td><div class="cell-main"><b>${esc(doc.title)}</b><small>${esc(doc.id)}</small></div></td>
+            <td>${esc(doc.type)}</td>
+            <td>${esc(projectById(doc.projectId)?.name || '—')}</td>
+            <td>${esc(doc.owner)}</td>
+            <td class="nowrap">${esc(doc.updated)}</td>
+            <td><span class="muted">→</span></td>
+          </tr>`).join('') : `<tr><td colspan="6">${emptyTable('平台总库还没有公开文档')}</td></tr>`}
         </tbody>
       </table></div>
     </div></section>`;
@@ -3209,16 +3338,6 @@ func Next(state State, picked bool) State {
     openPanel({ title: task.title, sub: `${task.id} · ${task.agent}`, body, footer, wide: true });
   }
 
-  function openDocDrawer(id) {
-    const doc = DOCS.find((item) => item.id === id);
-    if (!doc) return;
-    openPanel({
-      title: doc.title, sub: `${doc.type} · ${doc.owner} · ${doc.updated}`,
-      body: `<div class="drawer-section"><div class="flex">${pill(doc.status)}<span class="tag">RAG · ${esc(doc.status)}</span></div></div><div class="log-block" style="font-family:var(--font);font-size:12px;line-height:1.8;">${esc(doc.content)}</div>`,
-      footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">关闭</button><button class="btn btn-primary" type="button" data-action="rebuild-index">重建索引</button>`
-    });
-  }
-
   function openPipelineDrawer(id) {
     const run = PIPELINES.find((item) => item.id === id);
     if (!run) return;
@@ -3620,7 +3739,15 @@ func Next(state State, picked bool) State {
         if (action === 'confirm-cancel-task') { confirmCancelTask(id); return; }
         if (action === 'retry-task') { retryTask(id); return; }
         if (action === 'approve-mr') { approveMr(id); return; }
-        if (action === 'open-doc') { openDocDrawer(id); return; }
+        if (action === 'knowledge-tab') {
+          state.knowledgeTab = target.dataset.tab;
+          state.knowledgeSearch = '';
+          state.knowledgeType = 'all';
+          state.knowledgeReq = 'all';
+          state.knowledgeSource = 'all';
+          renderMain();
+          return;
+        }
         if (action === 'rebuild-index') { rebuildIndex(); return; }
         if (action === 'pipeline-filter') { state.pipelineFilter = target.dataset.filter; renderMain(); return; }
         if (action === 'open-run') { openPipelineDrawer(id); return; }
@@ -3661,6 +3788,9 @@ func Next(state State, picked bool) State {
       if (action === 'req-app-filter') { state.reqAppFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-release-filter') { state.reqReleaseFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-release-select') { setRequirementRelease(id, target.value); return; }
+      if (action === 'doc-type-filter') { state.knowledgeType = target.value; renderMain(); return; }
+      if (action === 'doc-req-filter') { state.knowledgeReq = target.value; renderMain(); return; }
+      if (action === 'doc-source-filter') { state.knowledgeSource = target.value; renderMain(); return; }
       if (action === 'repo-branch') { state.repoBranch = target.value; renderMain(); toast(`已切换到分支 ${target.value}（演示）。`, 'info'); return; }
       if (action === 'member-role') { changeMemberRole(id, target.value); return; }
       if (action === 'mcp-tool-change') { state.mcpTool = target.value; const form = target.closest('form'); if (form) { const args = form.querySelector('#mcp-args'); const cap = capabilityById(state.mcpTool); if (args && cap) args.value = JSON.stringify(cap.example, null, 2); } renderMain(); return; }
@@ -3682,6 +3812,7 @@ func Next(state State, picked bool) State {
       if (id === 'req-id-filter') { state.reqIdFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-id-filter'); return; }
       if (id === 'req-title-filter') { state.reqTitleFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-title-filter'); return; }
       if (id === 'req-updated-filter') { state.reqUpdatedFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-updated-filter'); return; }
+      if (id === 'doc-search') { state.knowledgeSearch = event.target.value; rerenderPreserve('doc-search'); return; }
       if (id === 'cap-search') { state.capSearch = event.target.value; rerenderPreserve('cap-search'); return; }
       if (id === 'audit-search') { state.auditSearch = event.target.value; rerenderPreserve('audit-search'); return; }
     });
