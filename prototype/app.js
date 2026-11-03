@@ -3993,6 +3993,58 @@ func Next(state State, picked bool) State {
     openPanel({ title: release.name, sub: `${release.id} · ${iteration?.name || ''} · 发布排期`, body, extraWide: true });
   }
 
+  function openDocForm() {
+    const reqs = projectRequirements(state.projectId);
+    openPanel({
+      title: '新建文档', sub: `${currentProject().name} · 项目知识库`, variant: 'modal',
+      body: `<form id="doc-form" data-form="create-doc">
+        <div class="field-row">
+          <div class="field"><label for="new-doc-title">文档标题</label><input id="new-doc-title" name="title" class="input" required maxlength="80" placeholder="例如：支付回滚方案"></div>
+          <div class="field"><label for="new-doc-type">文档类型</label><select id="new-doc-type" name="type" class="select">${docTypeOptions.map((type) => `<option ${type === '需求规格' ? 'selected' : ''}>${type}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label for="new-doc-requirement">关联需求（可选）</label><select id="new-doc-requirement" name="requirementId" class="select"><option value="">不关联</option>${reqs.map((req) => `<option value="${req.id}">${esc(req.id)} · ${esc(req.title)}</option>`).join('')}</select></div>
+        <div class="field"><label for="new-doc-content">初始内容（可选）</label><textarea id="new-doc-content" name="content" class="textarea" rows="4" placeholder="留空时自动生成一级标题"></textarea></div>
+        <div class="form-hint">文档默认仅本项目可检索；创建后可在预览页同步到平台总库。</div>
+        <div class="btn-row" style="justify-content:flex-end;margin-top:18px;"><button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="submit">创建并编辑</button></div>
+      </form>`
+    });
+  }
+
+  function submitDocCreate(form) {
+    const data = new FormData(form);
+    const title = String(data.get('title') || '').trim();
+    const type = String(data.get('type') || '需求规格');
+    const requirementId = String(data.get('requirementId') || '');
+    const content = String(data.get('content') || '');
+    if (!title) { toast('请填写文档标题。', 'warning'); return; }
+    if (requirementId && !REQUIREMENTS.some((item) => item.id === requirementId && item.projectId === state.projectId)) { toast('关联需求不属于当前项目。', 'warning'); return; }
+    const doc = {
+      id: `doc-${++state.docSeq}`,
+      projectId: state.projectId,
+      requirementId: requirementId || null,
+      title,
+      type: docTypeOptions.includes(type) ? type : '需求规格',
+      owner: '张明',
+      status: '索引中',
+      createdAt: nowDate(),
+      updated: nowTime(),
+      updatedBy: '张明',
+      published: false,
+      publishedAt: null,
+      publishedBy: null,
+      content: content.trim() ? content : `# ${title}\n\n`
+    };
+    DOCS.unshift(doc);
+    audit('创建文档', doc.id, '成功', { after: { title: doc.title, type: doc.type, requirementId: doc.requirementId } });
+    closeOverlay();
+    navigate(`#/knowledge/${doc.id}/edit`);
+    toast('文档已创建，正在索引。', 'success', '文档已创建');
+    setTimeout(() => {
+      doc.status = '已索引';
+      if (state.route === `#/knowledge/${doc.id}/edit` || state.route === `#/knowledge/${doc.id}`) renderMain();
+    }, 1200);
+  }
+
   function openTaskForm() {
     const projectOptions = PROJECTS.map((project) => `<option value="${project.id}" ${project.id === state.projectId ? 'selected' : ''}>${esc(project.name)}</option>`).join('');
     openPanel({
@@ -4093,6 +4145,7 @@ func Next(state State, picked bool) State {
         if (action === 'confirm-remove-member') { confirmRemoveMember(id); return; }
         if (action === 'new-requirement') { openRequirementForm(); return; }
         if (action === 'new-task') { openTaskForm(); return; }
+        if (action === 'new-doc') { openDocForm(); return; }
         if (action === 'new-release') { openReleaseForm(); return; }
         if (action === 'open-release') { openReleaseDrawer(id); return; }
         if (action === 'req-tab') { state.reqTab = target.dataset.tab; if (taskIdFromRoute()) { navigate('#/requirements'); return; } renderMain(); return; }
@@ -4279,6 +4332,7 @@ func Next(state State, picked bool) State {
       else if (type === 'repo-settings') submitRepoSettings(form);
       else if (type === 'run-pipeline') submitPipeline(form);
       else if (type === 'save-doc') submitDocEdit(form);
+      else if (type === 'create-doc') submitDocCreate(form);
       else if (type === 'mcp-test') submitMcpTest(form);
       else if (type === 'new-user') submitUser(form);
       else if (type === 'quota') { closeOverlay(); toast('配额已更新（演示）。', 'success'); audit('调整项目配额', form.querySelector('[name="cpu"]')?.value || 'quota', '成功'); renderMain(); }

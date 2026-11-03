@@ -406,6 +406,40 @@ try {
   await waitDom(`location.hash === '#/requirements' && document.querySelector('.sidebar .project-meta b')?.textContent === '客户运营'`);
   check('discarding a guarded project switch completes the switch', true);
 
+  await evaluate(`location.hash = '#/knowledge'`);
+  await waitDom(`!!document.querySelector('.knowledge-page')`);
+  if (await evaluate(`document.querySelector('.sidebar .project-meta b')?.textContent !== '订单中心'`)) {
+    await evaluate(`document.querySelector('[data-action="project-switch"]').click()`);
+    await waitDom(`!!document.querySelector('.overlay.open .project-option[data-id="p-order"]')`);
+    await evaluate(`document.querySelector('.overlay.open .project-option[data-id="p-order"]').click()`);
+    await waitDom(`document.querySelector('.sidebar .project-meta b')?.textContent === '订单中心'`);
+    await evaluate(`location.hash = '#/knowledge'`);
+    await waitDom(`!!document.querySelector('.knowledge-page')`);
+  }
+  await evaluate(`document.querySelector('[data-action="knowledge-tab"][data-tab="project"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
+  await evaluate(`document.querySelector('[data-action="new-doc"]').click()`);
+  await waitDom(`!!document.querySelector('#doc-form')`);
+  await evaluate(`(() => { const form = document.querySelector('#doc-form'); form.elements.title.value = '支付回滚方案'; form.elements.type.value = '方案设计'; form.elements.requirementId.value = 'RQ-102'; form.elements.content.value = '# 支付回滚方案\\n\\n回滚策略与补偿流程。'; form.requestSubmit(); return true; })()`);
+  await waitDom(`location.hash === '#/knowledge/doc-7/edit' && !!document.querySelector('#doc-edit-form')`);
+  check('new doc opens editor with requirement', (await evaluate(`document.querySelector('#doc-title')?.value === '支付回滚方案' && document.querySelector('#doc-requirement')?.value === 'RQ-102' && document.querySelector('#doc-content-input')?.value.includes('回滚策略')`)) === true);
+  await evaluate(`document.querySelector('#doc-edit-form').requestSubmit()`);
+  await waitDom(`location.hash === '#/knowledge/doc-7' && !!document.querySelector('.doc-page')`);
+  await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 4`);
+  check('new doc appears in project list', (await evaluate(`(() => { const row = document.querySelector('#main tbody tr[data-id="doc-7"]'); return !!row && row.innerText.includes('支付回滚方案') && row.innerText.includes('RQ-102'); })()`)) === true);
+
+  await evaluate(`document.querySelector('[data-action="new-doc"]').click()`);
+  await waitDom(`!!document.querySelector('#doc-form')`);
+  await evaluate(`(() => { const form = document.querySelector('#doc-form'); form.elements.title.value = '项目交付规范'; form.elements.type.value = '其他'; form.elements.requirementId.value = ''; form.requestSubmit(); return true; })()`);
+  await waitDom(`location.hash === '#/knowledge/doc-8/edit' && !!document.querySelector('#doc-edit-form')`);
+  check('new doc can skip requirement', (await evaluate(`document.querySelector('#doc-requirement')?.value === ''`)) === true);
+  await evaluate(`document.querySelector('#doc-edit-form').requestSubmit()`);
+  await waitDom(`location.hash === '#/knowledge/doc-8'`);
+  await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 5`);
+  check('project-level doc shows unlinked requirement', (await evaluate(`document.querySelector('#main tbody tr[data-id="doc-8"]')?.innerText.includes('未关联')`)) === true);
+
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {
   check('test harness completed', false, error.stack || String(error));
