@@ -135,6 +135,35 @@ try {
   await sleep(200);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/doc-list.png', Buffer.from(shot.data, 'base64')));
 
+  await evaluate(`document.querySelector('[data-action="knowledge-tab"][data-tab="project"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
+  await evaluate(`document.querySelector('#main tbody tr[data-id="doc-1"]').click()`);
+  await waitDom(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page')`);
+  check('doc row opens preview page', (await evaluate(`document.querySelector('.doc-title')?.textContent.trim() === '订单履约状态机说明'`)) === true);
+  check('preview renders markdown', (await evaluate(`(() => { const content = document.querySelector('.doc-content'); return !!content && !!content.querySelector('h1') && !!content.querySelector('ul') && !!content.querySelector('pre code') && !!content.querySelector('table'); })()`)) === true);
+  check('preview shows metadata and linked requirement', (await evaluate(`(() => { const page = document.querySelector('.doc-page'); return page.innerText.includes('doc-1') && page.innerText.includes('张明') && page.innerText.includes('RQ-112') && page.innerText.includes('仅本项目'); })()`)) === true);
+  await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
+  await waitDom(`location.hash === '#/knowledge' && document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
+  check('preview back returns to project tab', true);
+
+  await evaluate(`document.querySelector('[data-action="knowledge-tab"][data-tab="global"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
+  await evaluate(`document.querySelector('#main tbody tr[data-id="doc-4"]').click()`);
+  await waitDom(`location.hash === '#/knowledge/global/doc-4' && !!document.querySelector('.doc-page')`);
+  check('global preview is read-only for other projects', (await evaluate(`(() => { const page = document.querySelector('.doc-page'); return page.innerText.includes('智能客服') && page.innerText.includes('只读') && !page.querySelector('[data-action="edit-doc"]') && !page.querySelector('[data-action="toggle-doc-publish"]'); })()`)) === true);
+  await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
+  await waitDom(`location.hash === '#/knowledge' && document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
+  check('global preview back returns to global tab', true);
+
+  await evaluate(`document.querySelector('#main tbody tr[data-id="doc-5"]').click()`);
+  await waitDom(`location.hash === '#/knowledge/global/doc-5' && !!document.querySelector('.doc-page')`);
+  check('own published doc keeps edit action in global view', (await evaluate(`!!document.querySelector('[data-action="edit-doc"][data-id="doc-5"]')`)) === true);
+  await evaluate(`location.hash = '#/knowledge/global/doc-1'`);
+  await waitDom(`!!document.querySelector('.empty h2') && document.querySelector('.empty h2').innerText.includes('文档不存在')`);
+  check('unpublished doc is not available in global library', true);
+  await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
+  await waitDom(`location.hash === '#/knowledge'`);
+
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {
   check('test harness completed', false, error.stack || String(error));

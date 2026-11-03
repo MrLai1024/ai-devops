@@ -1222,6 +1222,40 @@ tr.row-click { cursor: pointer; }
 .doc-toolbar .doc-search { width: 220px; }
 .doc-toolbar .select { width: auto; min-width: 128px; }
 .doc-toolbar .btn { margin-left: auto; }
+.doc-back { align-self: flex-start; padding: 0; border: 0; background: none; color: #64748b; font-family: inherit; font-size: 11px; cursor: pointer; }
+.doc-back:hover { color: #0369a1; }
+.doc-page { display: flex; flex-direction: column; gap: 14px; }
+.doc-header { display: flex; flex-direction: column; gap: 8px; }
+.doc-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.doc-title { font-size: 26px; font-weight: 800; letter-spacing: -.03em; color: #14263d; line-height: 1.2; }
+.doc-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 11px; color: #94a3b8; }
+.doc-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.doc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
+.doc-main { padding: 26px 30px; }
+.doc-main .doc-content { max-width: 860px; }
+.doc-meta-card { padding: 18px; }
+.doc-meta-card .meta-grid { grid-template-columns: 1fr 1fr; }
+.doc-content { font-size: 13px; line-height: 1.85; color: #334155; overflow-wrap: anywhere; }
+.doc-content h1, .doc-content h2, .doc-content h3, .doc-content h4 { color: #14263d; letter-spacing: -.02em; line-height: 1.35; margin: 1.2em 0 .55em; }
+.doc-content h1 { font-size: 22px; margin-top: 0; }
+.doc-content h2 { font-size: 18px; }
+.doc-content h3 { font-size: 15px; }
+.doc-content p { margin: .65em 0; }
+.doc-content ul, .doc-content ol { margin: .65em 0; padding-left: 1.5em; }
+.doc-content li { margin: .25em 0; }
+.doc-content blockquote { margin: .9em 0; padding: 8px 13px; border-left: 3px solid #7dd3fc; background: #f8fcff; color: #475569; }
+.doc-content code { padding: 1px 5px; border-radius: 5px; background: #eef4f8; color: #0f5b8a; font-family: var(--mono); font-size: 11px; }
+.doc-content pre { margin: .9em 0; padding: 12px 14px; border: 1px solid #e2edf5; border-radius: 9px; background: #f8fbfd; overflow: auto; }
+.doc-content pre code { padding: 0; background: none; font-size: 11px; line-height: 1.6; }
+.doc-content a { color: #0284c7; text-decoration: underline; text-underline-offset: 2px; }
+.doc-content hr { margin: 1.2em 0; border: 0; border-top: 1px solid #e2e8f0; }
+.doc-content table { width: 100%; border-collapse: collapse; margin: .9em 0; font-size: 12px; }
+.doc-content th, .doc-content td { padding: 7px 9px; border: 1px solid #e6eef5; text-align: left; }
+.doc-content th { background: #f6fafd; color: #334155; }
+.doc-table-wrap { overflow-x: auto; }
+@media (max-width: 1000px) {
+  .doc-layout { grid-template-columns: 1fr; }
+}
 
 .project-new-card {
   min-height: 200px;

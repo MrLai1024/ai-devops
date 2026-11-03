@@ -72,6 +72,78 @@
   };
   const uid = (prefix) => `${prefix}-${Date.now().toString(36).slice(-5)}`;
 
+  function renderInlineMarkdown(text) {
+    const codeSpans = [];
+    let html = esc(text).replace(/`([^`]+)`/g, (match, code) => {
+      codeSpans.push(code);
+      return `\u0000${codeSpans.length - 1}\u0000`;
+    });
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
+    html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return html.replace(/\u0000(\d+)\u0000/g, (match, index) => `<code>${codeSpans[Number(index)]}</code>`);
+  }
+
+  const isMarkdownBlockStart = (line) => /^(#{1,6})\s+/.test(line) || /^```/.test(line) || /^>\s?/.test(line) || /^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line) || /^---+$/.test(line.trim()) || /^\|/.test(line.trim());
+
+  function renderMarkdown(source) {
+    const lines = String(source || '').replace(/\r\n/g, '\n').split('\n');
+    const html = [];
+    let index = 0;
+    while (index < lines.length) {
+      const line = lines[index];
+      if (!line.trim()) { index += 1; continue; }
+      if (/^```/.test(line)) {
+        const code = [];
+        index += 1;
+        while (index < lines.length && !/^```/.test(lines[index])) { code.push(lines[index]); index += 1; }
+        index += 1;
+        html.push(`<pre><code>${esc(code.join('\n'))}</code></pre>`);
+        continue;
+      }
+      const heading = line.match(/^(#{1,6})\s+(.*)$/);
+      if (heading) {
+        html.push(`<h${heading[1].length}>${renderInlineMarkdown(heading[2])}</h${heading[1].length}>`);
+        index += 1;
+        continue;
+      }
+      if (/^---+$/.test(line.trim())) { html.push('<hr>'); index += 1; continue; }
+      if (/^>\s?/.test(line)) {
+        const quote = [];
+        while (index < lines.length && /^>\s?/.test(lines[index])) { quote.push(lines[index].replace(/^>\s?/, '')); index += 1; }
+        html.push(`<blockquote>${quote.map((item) => renderInlineMarkdown(item)).join('<br>')}</blockquote>`);
+        continue;
+      }
+      if (/^[-*]\s+/.test(line)) {
+        const items = [];
+        while (index < lines.length && /^[-*]\s+/.test(lines[index])) { items.push(lines[index].replace(/^[-*]\s+/, '')); index += 1; }
+        html.push(`<ul>${items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join('')}</ul>`);
+        continue;
+      }
+      if (/^\d+\.\s+/.test(line)) {
+        const items = [];
+        while (index < lines.length && /^\d+\.\s+/.test(lines[index])) { items.push(lines[index].replace(/^\d+\.\s+/, '')); index += 1; }
+        html.push(`<ol>${items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join('')}</ol>`);
+        continue;
+      }
+      if (line.includes('|') && index + 1 < lines.length && /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(lines[index + 1])) {
+        const parseRow = (row) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
+        const headers = parseRow(line);
+        index += 2;
+        const rows = [];
+        while (index < lines.length && lines[index].includes('|')) { rows.push(parseRow(lines[index])); index += 1; }
+        html.push(`<div class="doc-table-wrap"><table><thead><tr>${headers.map((cell) => `<th>${renderInlineMarkdown(cell)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+        continue;
+      }
+      const paragraph = [line];
+      index += 1;
+      while (index < lines.length && lines[index].trim() && !isMarkdownBlockStart(lines[index])) { paragraph.push(lines[index]); index += 1; }
+      html.push(`<p>${renderInlineMarkdown(paragraph.join(' '))}</p>`);
+    }
+    return html.join('');
+  }
+
   function toneFor(status) {
     const s = String(status);
     if (['成功', '健康', '活跃', '发布', '已发布', '已完成', '已处理', '已启用', '低', 'SUCCEEDED', 'APPROVED', 'RELEASED', '待发布', '已批准', '进行中'].includes(s)) return 'success';
@@ -1469,6 +1541,8 @@ func Next(state State, picked bool) State {
     if (!PROJECTS.length && meta.module === 'projects') return renderProjects();
     const repoInfo = repoRouteInfo();
     if (repoInfo) return repoInfo.mrNumber ? renderMrDetail(repoInfo.repoId, repoInfo.mrNumber) : renderRepoDetail(repoInfo.repoId);
+    const docInfo = docRouteInfo();
+    if (docInfo) return renderDocRoute(docInfo);
     const taskId = taskIdFromRoute();
     if (taskId) return state.taskReturn === 'agents' ? renderTaskDetail(taskId) : renderRequirements(taskId);
     switch (meta.page) {
@@ -2410,6 +2484,60 @@ func Next(state State, picked bool) State {
         <div class="mr-comment-list">${mr.comments.map((comment) => renderMrComment(comment)).join('') || '<div class="empty-table">暂无评论</div>'}</div>
         <div class="mr-comment-compose"><textarea id="mr-comment-input" class="textarea" rows="3" maxlength="1000" placeholder="补充说明或评审意见…"></textarea><div class="flex" style="justify-content:flex-end;margin-top:8px;"><button class="btn btn-primary btn-sm" type="button" data-action="add-mr-comment" data-id="${mr.id}">发表评论</button></div></div>
       </div></section>
+    </div>`;
+  }
+
+  function renderDocRoute(info) {
+    const doc = docById(info.docId);
+    if (!doc) return renderDocNotFound();
+    if (info.scope === 'global' && !doc.published) return renderDocNotFound();
+    if (info.edit && (info.scope === 'global' || doc.projectId !== state.projectId)) return renderDocNotFound();
+    if (info.scope === 'project' && doc.projectId !== state.projectId) return renderDocNotFound();
+    return info.edit ? renderDocEditor(doc, info) : renderDocPreview(doc, info);
+  }
+
+  function renderDocNotFound() {
+    return `<div class="empty">
+      <div class="empty-icon">${icon('file', 30)}</div>
+      <h2>文档不存在或无权访问</h2>
+      <p>该文档可能已取消发布，或不属于当前项目。</p>
+      <button class="btn btn-primary" type="button" data-action="back-to-knowledge" data-tab="project">返回知识库</button>
+    </div>`;
+  }
+
+  function renderDocPreview(doc, info) {
+    const project = projectById(doc.projectId);
+    const req = doc.requirementId ? requirementById(doc.requirementId) : null;
+    const own = doc.projectId === state.projectId;
+    const isGlobal = info.scope === 'global';
+    return `<div class="doc-page">
+      <button class="doc-back" type="button" data-action="back-to-knowledge" data-tab="${isGlobal ? 'global' : 'project'}">← 返回知识库</button>
+      <div class="doc-header">
+        <div class="doc-title-row"><span class="tag">${esc(doc.type)}</span>${pill(doc.status)}<span class="tag">${doc.published ? '平台总库' : '仅本项目'}</span>${own ? '' : '<span class="tag">只读</span>'}</div>
+        <h1 class="doc-title">${esc(doc.title)}</h1>
+        <div class="doc-meta"><span>${esc(doc.id)}</span><span>${esc(doc.owner)}</span><span>更新 ${esc(doc.updated)}</span>${isGlobal ? `<span>来源：${esc(project?.name || '—')}</span>` : ''}</div>
+      </div>
+      ${own ? `<div class="doc-actions">
+        <button class="btn btn-primary" type="button" data-action="edit-doc" data-id="${doc.id}">${icon('file', 14)} 编辑</button>
+        <button class="btn btn-outline" type="button" data-action="toggle-doc-publish" data-id="${doc.id}">${doc.published ? '取消发布' : '同步到平台总库'}</button>
+      </div>` : ''}
+      <div class="doc-layout">
+        <section class="card doc-main"><article class="doc-content">${renderMarkdown(doc.content) || '<p class="muted">暂无正文</p>'}</article></section>
+        <aside class="card doc-meta-card">
+          <div class="drawer-section-title">文档信息</div>
+          <div class="meta-grid">
+            <div class="meta-item"><div class="meta-label">文档类型</div><div class="meta-value">${esc(doc.type)}</div></div>
+            <div class="meta-item"><div class="meta-label">负责人</div><div class="meta-value">${esc(doc.owner)}</div></div>
+            <div class="meta-item"><div class="meta-label">创建时间</div><div class="meta-value">${esc(doc.createdAt || '—')}</div></div>
+            <div class="meta-item"><div class="meta-label">更新时间</div><div class="meta-value">${esc(doc.updated)}</div></div>
+            <div class="meta-item"><div class="meta-label">RAG 状态</div><div class="meta-value">${pill(doc.status)}</div></div>
+            <div class="meta-item"><div class="meta-label">检索范围</div><div class="meta-value">${doc.published ? '平台总库' : '仅本项目'}</div></div>
+          </div>
+          <div class="divider"></div>
+          <div class="meta-item"><div class="meta-label">关联需求</div><div class="meta-value">${req ? (own ? `<button class="card-link" type="button" data-action="open-req" data-id="${req.id}">${esc(req.id)} · ${esc(req.title)}</button>` : `${esc(req.id)} · ${esc(req.title)}`) : '未关联'}</div></div>
+          ${doc.published ? `<div class="form-hint" style="margin-top:10px;">已同步至平台总库：${esc(doc.publishedBy || '—')} · ${esc(doc.publishedAt || '—')}</div>` : ''}
+        </aside>
+      </div>
     </div>`;
   }
 
@@ -3778,6 +3906,9 @@ func Next(state State, picked bool) State {
           renderMain();
           return;
         }
+        if (action === 'open-doc-page') { navigate(target.dataset.scope === 'global' ? `#/knowledge/global/${id}` : `#/knowledge/${id}`); return; }
+        if (action === 'back-to-knowledge') { state.knowledgeTab = target.dataset.tab || 'project'; navigate('#/knowledge'); return; }
+        if (action === 'edit-doc') { navigate(`#/knowledge/${id}/edit`); return; }
         if (action === 'rebuild-index') { rebuildIndex(); return; }
         if (action === 'pipeline-filter') { state.pipelineFilter = target.dataset.filter; renderMain(); return; }
         if (action === 'open-run') { openPipelineDrawer(id); return; }
