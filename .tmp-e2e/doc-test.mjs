@@ -108,19 +108,25 @@ try {
   await evaluate(`(() => { const type = document.querySelector('#doc-type-filter'); type.value = 'all'; type.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
 
-  const compositionGuard = await evaluate(`(() => {
-    const tab = document.querySelector('[data-action="knowledge-tab"][data-tab="global"]');
-    const search = document.querySelector('#doc-search');
-    search.value = 'exception';
-    tab.focus();
-    search.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
-    return { sameTab: document.querySelector('[data-action="knowledge-tab"][data-tab="global"]') === tab, connected: tab.isConnected, activeTab: document.querySelector('.knowledge-page .tab.active')?.textContent.trim() };
-  })()`);
-  check('compositionend preserves the clicked tab when search lost focus', compositionGuard.sameTab && compositionGuard.connected && compositionGuard.activeTab.includes('本项目文档'), JSON.stringify(compositionGuard));
-  await evaluate(`document.querySelector('[data-action="knowledge-tab"][data-tab="global"]').click()`);
-  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
+  await evaluate(`document.querySelector('#doc-search').focus()`);
+  await send('Input.imeSetComposition', { text: 'zhuangtai', selectionStart: 9, selectionEnd: 9 });
+  const compositionValue = await evaluate(`document.querySelector('#doc-search').value`);
+  const tabRect = await evaluate(`(() => { const el = document.querySelector('[data-action="knowledge-tab"][data-tab="global"]'); const rect = el.getBoundingClientRect(); return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }; })()`);
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: tabRect.x, y: tabRect.y });
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: tabRect.x, y: tabRect.y, button: 'left', clickCount: 1 });
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: tabRect.x, y: tabRect.y, button: 'left', clickCount: 1 });
+  await waitDom(`document.querySelector('[data-action="knowledge-tab"][data-tab="global"]')?.classList.contains('active') && document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
+  const imeClick = await evaluate(`({ search: document.querySelector('#doc-search')?.value, activeTab: document.querySelector('.knowledge-page .tab.active')?.textContent.trim() })`);
+  check('IME composition click switches tab without being swallowed', imeClick.activeTab.includes('平台总库') && imeClick.search === '', JSON.stringify({ compositionValue, ...imeClick }));
+
   const globalRows = await evaluate(`Array.from(document.querySelectorAll('#main tbody tr[data-id]')).map((tr) => ({ id: tr.dataset.id, text: tr.innerText }))`);
   check('global tab lists published docs from all projects', globalRows.some((row) => row.id === 'doc-4' && row.text.includes('智能客服')) && globalRows.some((row) => row.id === 'doc-5' && row.text.includes('订单中心')), JSON.stringify(globalRows));
+
+  await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = 'zzz'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await waitDom(`document.querySelector('#main tbody')?.innerText.includes('当前筛选下没有公开文档')`);
+  check('global filtered empty state explains active filters', (await evaluate(`document.querySelectorAll('#main tbody tr[data-id]').length === 0`)) === true);
+  await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
 
   await evaluate(`(() => { const select = document.querySelector('#doc-source-filter'); select.value = 'p-support'; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 1 && document.querySelector('#main tbody tr[data-id]')?.dataset.id === 'doc-4'`);

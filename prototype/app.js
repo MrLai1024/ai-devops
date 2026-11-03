@@ -1212,6 +1212,7 @@ func Next(state State, picked bool) State {
   const projectDocs = (projectId) => DOCS.filter((item) => item.projectId === projectId);
   const docById = (id) => DOCS.find((item) => item.id === id);
   const docTypeOptions = ['需求规格', '方案设计', '测试方案', '运行手册', '其他'];
+  let docSearchPointerDown = false;
   const currentProject = () => projectById(state.projectId) || PROJECTS[0];
   const currentIteration = () => iterationById(state.iterationId) || projectIterations(state.projectId)[0] || ITERATIONS[0];
 
@@ -3694,6 +3695,12 @@ func Next(state State, picked bool) State {
 
   /* ---------------- events ---------------- */
   function bindEvents() {
+    document.addEventListener('pointerdown', () => {
+      if (document.activeElement?.id === 'doc-search') docSearchPointerDown = true;
+    }, true);
+    document.addEventListener('pointerup', () => { docSearchPointerDown = false; }, true);
+    document.addEventListener('pointercancel', () => { docSearchPointerDown = false; }, true);
+
     document.addEventListener('click', (event) => {
       if (event.target.closest('.switch')) return;
       const target = event.target.closest('[data-action]');
@@ -3837,7 +3844,7 @@ func Next(state State, picked bool) State {
       if (id === 'req-updated-filter') { state.reqUpdatedFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-updated-filter'); return; }
       if (id === 'doc-search') {
         state.knowledgeSearch = event.target.value;
-        if (event.isComposing) return;
+        if (event.isComposing || docSearchPointerDown) return;
         rerenderPreserve('doc-search');
         return;
       }
@@ -3848,7 +3855,7 @@ func Next(state State, picked bool) State {
     document.addEventListener('compositionend', (event) => {
       if (event.target.id !== 'doc-search') return;
       state.knowledgeSearch = event.target.value;
-      if (document.activeElement !== event.target) return;
+      if (event.isComposing || docSearchPointerDown) return;
       rerenderPreserve('doc-search');
     });
 
