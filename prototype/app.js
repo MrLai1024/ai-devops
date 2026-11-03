@@ -3848,6 +3848,7 @@ func Next(state State, picked bool) State {
     document.addEventListener('compositionend', (event) => {
       if (event.target.id !== 'doc-search') return;
       state.knowledgeSearch = event.target.value;
+      if (document.activeElement !== event.target) return;
       rerenderPreserve('doc-search');
     });
 

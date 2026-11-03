@@ -78,9 +78,9 @@ try {
   check('project tab lists current project docs', projectTitles.includes('订单履约状态机说明') && projectTitles.includes('履约超时预警阈值配置') && projectTitles.includes('订单履约超时预警 PRD') && !projectTitles.includes('客户分层运营 SOP'), projectTitles.join(' | '));
   check('project row shows requirement type and scope', (await evaluate(`(() => { const row = document.querySelector('#main tbody tr[data-id="doc-5"]'); return !!row && row.innerText.includes('RQ-101') && row.innerText.includes('需求规格') && row.innerText.includes('平台总库'); })()`)) === true);
 
-  await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = 'EXCEPTION'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = 'exception'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 1 && document.querySelector('#main tbody tr[data-id]')?.dataset.id === 'doc-1'`);
-  check('doc search filters content-only tokens', true);
+  check('doc search filters content-only tokens case-insensitively', true);
 
   await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); const select = document.querySelector('#doc-type-filter'); select.value = '运行手册'; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 1 && document.querySelector('#main tbody tr[data-id]')?.dataset.id === 'doc-2'`);
@@ -90,6 +90,33 @@ try {
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
   check('doc requirement filter works', true);
 
+  await evaluate(`document.querySelector('[data-action="project-switch"]').click()`);
+  await waitDom(`!!document.querySelector('.project-option[data-id="p-customer"]')`);
+  await evaluate(`document.querySelector('.project-option[data-id="p-customer"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
+  const switchedProject = await evaluate(`(() => ({ value: document.querySelector('#doc-req-filter')?.value, titles: Array.from(document.querySelectorAll('#main tbody tr[data-id]')).map((tr) => tr.querySelector('.cell-main b')?.textContent.trim()) }))()`);
+  check('project switch clears stale knowledge filters', switchedProject.value === 'all' && switchedProject.titles.includes('客户分层运营 SOP') && switchedProject.titles.includes('客户分层看板测试方案'), JSON.stringify(switchedProject));
+
+  await evaluate(`document.querySelector('[data-action="project-switch"]').click()`);
+  await waitDom(`!!document.querySelector('.project-option[data-id="p-order"]')`);
+  await evaluate(`document.querySelector('.project-option[data-id="p-order"]').click()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
+
+  await evaluate(`(() => { const type = document.querySelector('#doc-type-filter'); type.value = '测试方案'; type.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await waitDom(`document.querySelector('#main tbody')?.innerText.includes('当前筛选下没有文档')`);
+  check('filtered empty state explains active filters', (await evaluate(`document.querySelectorAll('#main tbody tr[data-id]').length === 0`)) === true);
+  await evaluate(`(() => { const type = document.querySelector('#doc-type-filter'); type.value = 'all'; type.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
+
+  const compositionGuard = await evaluate(`(() => {
+    const tab = document.querySelector('[data-action="knowledge-tab"][data-tab="global"]');
+    const search = document.querySelector('#doc-search');
+    search.value = 'exception';
+    tab.focus();
+    search.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
+    return { sameTab: document.querySelector('[data-action="knowledge-tab"][data-tab="global"]') === tab, connected: tab.isConnected, activeTab: document.querySelector('.knowledge-page .tab.active')?.textContent.trim() };
+  })()`);
+  check('compositionend preserves the clicked tab when search lost focus', compositionGuard.sameTab && compositionGuard.connected && compositionGuard.activeTab.includes('本项目文档'), JSON.stringify(compositionGuard));
   await evaluate(`document.querySelector('[data-action="knowledge-tab"][data-tab="global"]').click()`);
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
   const globalRows = await evaluate(`Array.from(document.querySelectorAll('#main tbody tr[data-id]')).map((tr) => ({ id: tr.dataset.id, text: tr.innerText }))`);
