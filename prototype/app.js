@@ -1227,6 +1227,13 @@ func Next(state State, picked bool) State {
     state.reqUpdatedFilter = '';
   }
 
+  function resetKnowledgeFilters() {
+    state.knowledgeSearch = '';
+    state.knowledgeType = 'all';
+    state.knowledgeReq = 'all';
+    state.knowledgeSource = 'all';
+  }
+
   function iterationStats(iterationId) {
     const items = iterationRequirements(iterationId);
     return {
@@ -1302,7 +1309,13 @@ func Next(state State, picked bool) State {
   const docRouteInfo = () => {
     const match = state.route.match(/^#\/knowledge\/(?:(global)\/)?([^/?#]+)(\/edit)?\/?$/);
     if (!match) return null;
-    return { scope: match[1] ? 'global' : 'project', docId: decodeURIComponent(match[2]), edit: !!match[3] };
+    let docId;
+    try {
+      docId = decodeURIComponent(match[2]);
+    } catch (error) {
+      return null;
+    }
+    return { scope: match[1] ? 'global' : 'project', docId, edit: !!match[3] };
   };
 
   function syncDocProject() {
@@ -2424,11 +2437,16 @@ func Next(state State, picked bool) State {
   }
 
   function renderProjectDocs() {
+    const requirements = projectRequirements(state.projectId);
+    const requirementIds = new Set(requirements.map((req) => req.id));
+    const reqFilter = state.knowledgeReq === 'all' || state.knowledgeReq === 'none' || requirementIds.has(state.knowledgeReq)
+      ? state.knowledgeReq
+      : 'all';
+    const totalDocs = projectDocs(state.projectId).length;
     const docs = projectDocs(state.projectId).filter((doc) =>
       (state.knowledgeType === 'all' || doc.type === state.knowledgeType) &&
-      (state.knowledgeReq === 'all' || (state.knowledgeReq === 'none' ? !doc.requirementId : doc.requirementId === state.knowledgeReq)) &&
+      (reqFilter === 'all' || (reqFilter === 'none' ? !doc.requirementId : doc.requirementId === reqFilter)) &&
       docSearchMatches(doc));
-    const requirements = projectRequirements(state.projectId);
     return `<section class="card"><div class="card-body" style="padding-top:14px;">
       <div class="doc-toolbar">
         <input id="doc-search" class="input doc-search" type="search" placeholder="搜索标题或正文" value="${esc(state.knowledgeSearch)}" aria-label="搜索文档">
@@ -2437,9 +2455,9 @@ func Next(state State, picked bool) State {
           ${docTypeOptions.map((type) => `<option value="${type}" ${state.knowledgeType === type ? 'selected' : ''}>${type}</option>`).join('')}
         </select>
         <select id="doc-req-filter" class="select" data-action="doc-req-filter" aria-label="按需求筛选">
-          <option value="all" ${state.knowledgeReq === 'all' ? 'selected' : ''}>全部需求</option>
-          <option value="none" ${state.knowledgeReq === 'none' ? 'selected' : ''}>未关联</option>
-          ${requirements.map((req) => `<option value="${req.id}" ${state.knowledgeReq === req.id ? 'selected' : ''}>${esc(req.id)} · ${esc(req.title)}</option>`).join('')}
+          <option value="all" ${reqFilter === 'all' ? 'selected' : ''}>全部需求</option>
+          <option value="none" ${reqFilter === 'none' ? 'selected' : ''}>未关联</option>
+          ${requirements.map((req) => `<option value="${req.id}" ${reqFilter === req.id ? 'selected' : ''}>${esc(req.id)} · ${esc(req.title)}</option>`).join('')}
         </select>
         <button class="btn btn-outline btn-sm" type="button" data-action="rebuild-index">${icon('refresh', 13)} 重建索引</button>
       </div>
@@ -2455,17 +2473,22 @@ func Next(state State, picked bool) State {
             <td>${pill(doc.status)}</td>
             <td class="nowrap">${esc(doc.updated)}</td>
             <td><span class="muted">→</span></td>
-          </tr>`).join('') : `<tr><td colspan="8">${emptyTable('当前筛选下没有文档')}</td></tr>`}
+          </tr>`).join('') : `<tr><td colspan="8">${emptyTable(totalDocs ? '当前筛选下没有文档' : '当前项目还没有文档')}</td></tr>`}
         </tbody>
       </table></div>
     </div></section>`;
   }
 
   function renderGlobalDocs() {
-    const sources = PROJECTS.filter((project) => DOCS.some((doc) => doc.published && doc.projectId === project.id));
-    const docs = DOCS.filter((doc) => doc.published)
+    const publishedDocs = DOCS.filter((doc) => doc.published);
+    const sources = PROJECTS.filter((project) => publishedDocs.some((doc) => doc.projectId === project.id));
+    const sourceIds = new Set(sources.map((project) => project.id));
+    const sourceFilter = state.knowledgeSource === 'all' || sourceIds.has(state.knowledgeSource)
+      ? state.knowledgeSource
+      : 'all';
+    const docs = publishedDocs
       .filter((doc) => state.knowledgeType === 'all' || doc.type === state.knowledgeType)
-      .filter((doc) => state.knowledgeSource === 'all' || doc.projectId === state.knowledgeSource)
+      .filter((doc) => sourceFilter === 'all' || doc.projectId === sourceFilter)
       .filter(docSearchMatches);
     return `<section class="card"><div class="card-body" style="padding-top:14px;">
       <div class="doc-toolbar">
@@ -2475,8 +2498,8 @@ func Next(state State, picked bool) State {
           ${docTypeOptions.map((type) => `<option value="${type}" ${state.knowledgeType === type ? 'selected' : ''}>${type}</option>`).join('')}
         </select>
         <select id="doc-source-filter" class="select" data-action="doc-source-filter" aria-label="按来源项目筛选">
-          <option value="all" ${state.knowledgeSource === 'all' ? 'selected' : ''}>全部项目</option>
-          ${sources.map((project) => `<option value="${project.id}" ${state.knowledgeSource === project.id ? 'selected' : ''}>${esc(project.name)}</option>`).join('')}
+          <option value="all" ${sourceFilter === 'all' ? 'selected' : ''}>全部项目</option>
+          ${sources.map((project) => `<option value="${project.id}" ${sourceFilter === project.id ? 'selected' : ''}>${esc(project.name)}</option>`).join('')}
         </select>
       </div>
       <div class="table-wrap"><table>
@@ -2489,7 +2512,7 @@ func Next(state State, picked bool) State {
             <td>${esc(doc.owner)}</td>
             <td class="nowrap">${esc(doc.updated)}</td>
             <td><span class="muted">→</span></td>
-          </tr>`).join('') : `<tr><td colspan="6">${emptyTable('平台总库还没有公开文档')}</td></tr>`}
+          </tr>`).join('') : `<tr><td colspan="6">${emptyTable(publishedDocs.length ? '当前筛选下没有公开文档' : '平台总库还没有公开文档')}</td></tr>`}
         </tbody>
       </table></div>
     </div></section>`;
@@ -3812,9 +3835,20 @@ func Next(state State, picked bool) State {
       if (id === 'req-id-filter') { state.reqIdFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-id-filter'); return; }
       if (id === 'req-title-filter') { state.reqTitleFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-title-filter'); return; }
       if (id === 'req-updated-filter') { state.reqUpdatedFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-updated-filter'); return; }
-      if (id === 'doc-search') { state.knowledgeSearch = event.target.value; rerenderPreserve('doc-search'); return; }
+      if (id === 'doc-search') {
+        state.knowledgeSearch = event.target.value;
+        if (event.isComposing) return;
+        rerenderPreserve('doc-search');
+        return;
+      }
       if (id === 'cap-search') { state.capSearch = event.target.value; rerenderPreserve('cap-search'); return; }
       if (id === 'audit-search') { state.auditSearch = event.target.value; rerenderPreserve('audit-search'); return; }
+    });
+
+    document.addEventListener('compositionend', (event) => {
+      if (event.target.id !== 'doc-search') return;
+      state.knowledgeSearch = event.target.value;
+      rerenderPreserve('doc-search');
     });
 
     document.addEventListener('submit', (event) => {
@@ -3915,6 +3949,7 @@ func Next(state State, picked bool) State {
     state.iterationId = project.iterationId;
     state.reqTab = 'list';
     resetRequirementFilters();
+    resetKnowledgeFilters();
     state.taskFilter = 'all';
     state.pipelineFilter = 'all';
     state.membersPage = 1;
@@ -3932,6 +3967,7 @@ func Next(state State, picked bool) State {
     state.iterationId = project.iterationId;
     state.reqTab = 'list';
     resetRequirementFilters();
+    resetKnowledgeFilters();
     state.membersPage = 1;
     navigate('#/requirements');
   }
@@ -3994,6 +4030,7 @@ func Next(state State, picked bool) State {
       state.projectId = next ? next.id : null;
       state.iterationId = next ? next.iterationId : null;
       resetRequirementFilters();
+      resetKnowledgeFilters();
       state.membersPage = 1;
     }
     closeOverlay();
@@ -4251,6 +4288,7 @@ func Next(state State, picked bool) State {
     state.iterationId = iterationId;
     state.reqTab = 'list';
     resetRequirementFilters();
+    resetKnowledgeFilters();
     state.taskFilter = 'all';
     state.pipelineFilter = 'all';
     state.membersPage = 1;

@@ -71,15 +71,16 @@ try {
   await sleep(300);
 
   const tabText = await evaluate(`Array.from(document.querySelectorAll('.knowledge-page .tab')).map((el) => el.textContent.trim())`);
-  check('knowledge has project and global tabs', tabText.length === 2 && tabText[0].includes('本项目文档') && tabText[0].includes('3') && tabText[1].includes('平台总库') && tabText[1].includes('2'), tabText.join(' | '));
+  const tabCounts = await evaluate(`Array.from(document.querySelectorAll('.knowledge-page .tab-count')).map((el) => el.textContent.trim())`);
+  check('knowledge has project and global tabs', tabText.length === 2 && tabText[0].includes('本项目文档') && tabText[1].includes('平台总库') && tabCounts.length === 2 && tabCounts[0] === '3' && tabCounts[1] === '2', `${tabText.join(' | ')} | ${tabCounts.join(' | ')}`);
 
   const projectTitles = await evaluate(`Array.from(document.querySelectorAll('#main tbody tr[data-id]')).map((tr) => tr.querySelector('.cell-main b')?.textContent.trim())`);
   check('project tab lists current project docs', projectTitles.includes('订单履约状态机说明') && projectTitles.includes('履约超时预警阈值配置') && projectTitles.includes('订单履约超时预警 PRD') && !projectTitles.includes('客户分层运营 SOP'), projectTitles.join(' | '));
   check('project row shows requirement type and scope', (await evaluate(`(() => { const row = document.querySelector('#main tbody tr[data-id="doc-5"]'); return !!row && row.innerText.includes('RQ-101') && row.innerText.includes('需求规格') && row.innerText.includes('平台总库'); })()`)) === true);
 
-  await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = '状态机'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = 'EXCEPTION'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 1 && document.querySelector('#main tbody tr[data-id]')?.dataset.id === 'doc-1'`);
-  check('doc search filters title and content', true);
+  check('doc search filters content-only tokens', true);
 
   await evaluate(`(() => { const input = document.querySelector('#doc-search'); input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); const select = document.querySelector('#doc-type-filter'); select.value = '运行手册'; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await waitDom(`document.querySelectorAll('#main tbody tr[data-id]').length === 1 && document.querySelector('#main tbody tr[data-id]')?.dataset.id === 'doc-2'`);
