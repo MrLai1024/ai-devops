@@ -211,6 +211,7 @@
     if (!input) return;
     const value = input.value;
     const start = input.selectionStart;
+    // Only code blocks wrap a selection; table/hr insert at a line boundary and keep selected text.
     if (input.selectionEnd > start && template.startsWith('```')) {
       const { lineStart, lineEnd } = docLineRange(value, input.selectionStart, input.selectionEnd);
       const content = value.slice(lineStart, lineEnd);

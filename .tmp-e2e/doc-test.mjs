@@ -298,7 +298,8 @@ try {
   await sleep(100);
   await evaluate(`document.querySelector('[data-action="doc-format"][data-format="table"]').click()`);
   await sleep(180);
-  check('selected table template preserves the selected text', (await evaluate(`(() => { const value = document.querySelector('#doc-content-input')?.value || ''; return value.includes('保留文本') && !!document.querySelector('#doc-preview table') && document.querySelector('#doc-preview')?.innerText.includes('保留文本'); })()`)) === true);
+  // Table/hr deliberately ignore selection shape: insert at a line boundary and keep selected text.
+  check('table template keeps selected text at a line boundary', (await evaluate(`(() => { const value = document.querySelector('#doc-content-input')?.value || ''; return value.startsWith('| 列 1 | 列 2 |') && value.includes('\\n\\n保留文本') && !!document.querySelector('#doc-preview table') && document.querySelector('#doc-preview')?.innerText.includes('保留文本'); })()`)) === true);
 
   await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = '| A | B |\\n| --- | --- |\\n| 1 | 2 | 多余尾部 |'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   await sleep(180);
@@ -335,6 +336,22 @@ try {
 
   await evaluate(`document.querySelector('[data-action="edit-doc"]').click()`);
   await waitDom(`location.hash === '#/knowledge/doc-1/edit' && !!document.querySelector('#doc-edit-form')`);
+  const nativeBase = await evaluate(`document.querySelector('#doc-content-input').value`);
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.focus(); input.setSelectionRange(input.value.length, input.value.length); return true; })()`);
+  await send('Input.insertText', { text: 'A' });
+  await sleep(60);
+  await send('Input.insertText', { text: 'B' });
+  await sleep(60);
+  await send('Input.insertText', { text: 'C' });
+  await sleep(120);
+  check('native input creates a real undo entry', (await evaluate(`document.querySelector('#doc-content-input')?.value`)) === nativeBase + 'ABC');
+  await evaluate(`(() => { window.__docUndoPrevented = null; const probe = (event) => { if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'z') { window.__docUndoPrevented = event.defaultPrevented; document.removeEventListener('keydown', probe); } }; document.addEventListener('keydown', probe); return true; })()`);
+  await evaluate(`document.querySelector('#doc-content-input').focus()`);
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'z', code: 'KeyZ', windowsVirtualKeyCode: 90, nativeVirtualKeyCode: 90, modifiers: 2 });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'z', code: 'KeyZ', windowsVirtualKeyCode: 90, nativeVirtualKeyCode: 90, modifiers: 2 });
+  await sleep(120);
+  check('ctrl+z prevents native undo', (await evaluate(`window.__docUndoPrevented === true`)) === true);
+  check('ctrl+z reverses coalesced native input in one step', (await evaluate(`document.querySelector('#doc-content-input')?.value`)) === nativeBase);
   await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = input.value + '\\n\\n搜索守卫修改'; input.dispatchEvent(new Event('input', { bubbles: true })); const search = document.querySelector('#global-search'); search.value = '客户分层'; search.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   await waitDom(`!!document.querySelector('#search-results.open [data-action="search-result"][data-id="RQ-106"]')`);
   await evaluate(`document.querySelector('#search-results.open [data-action="search-result"][data-id="RQ-106"]').click()`);
@@ -343,6 +360,11 @@ try {
   await evaluate(`document.querySelector('[data-action="continue-doc-edit"]').click()`);
   await waitDom(`!document.querySelector('.overlay.open') && !!document.querySelector('#doc-edit-form')`);
   check('continue editing restores the document project context', (await evaluate(`document.querySelector('.sidebar .project-meta b')?.textContent === '订单中心'`)) === true);
+  await evaluate(`document.querySelector('[data-action="project-switch"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open .project-option')`);
+  check('restored project context is active in the switcher', (await evaluate(`document.querySelector('.overlay.open .project-option.active')?.innerText.includes('订单中心')`)) === true);
+  await evaluate(`document.querySelector('.overlay.open [data-action="close-overlay"]').click()`);
+  await waitDom(`!document.querySelector('.overlay.open') && !!document.querySelector('#doc-edit-form')`);
   await evaluate(`document.querySelector('#doc-edit-form').requestSubmit()`);
   await waitDom(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page')`);
   check('guarded search result does not open a foreign drawer', (await evaluate(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page') && !document.querySelector('.overlay.open')`)) === true);
