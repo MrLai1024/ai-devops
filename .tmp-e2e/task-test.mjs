@@ -69,8 +69,8 @@ try {
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   await waitDom(`document.querySelector('.page-title, .tabs') && document.querySelector('.tabs')`);
 
-  await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="board"]').click()`);
-  await waitDom(`!!document.querySelector('.task-kanban')`);
+  await evaluate(`document.querySelector('.sidebar [data-action="nav"][data-route="#/agents"]').click()`);
+  await waitDom(`location.hash === '#/agents' && !!document.querySelector('.task-kanban')`);
   const boardHeads = await evaluate(`Array.from(document.querySelectorAll('.task-kanban .kanban-head b')).map((el) => el.textContent.trim())`);
   check('task board columns are by status', JSON.stringify(boardHeads) === JSON.stringify(['排队中', '运行中', '待确认', '已完成', '失败']), boardHeads.join(','));
   check('task board has task cards', (await evaluate(`document.querySelectorAll('[data-action="open-task-page"]').length`)) >= 5);
@@ -83,7 +83,7 @@ try {
   await waitDom(`!!document.querySelector('#main.main-task .task-page-title')`);
   check('task card switches to detail view, not overlay', (await evaluate(`location.hash === '#/tasks/T-207' && !!document.querySelector('#main.main-task') && !document.querySelector('.overlay.open')`)) === true);
   check('project shell stays visible on task detail', (await evaluate(`(() => { const shell = document.querySelector('#shell'); const sidebar = document.querySelector('#sidebar'); const main = document.querySelector('#main'); return !shell.classList.contains('no-sidebar') && !!sidebar && getComputedStyle(sidebar).display !== 'none' && sidebar.getBoundingClientRect().width > 0 && main.getBoundingClientRect().width < window.innerWidth; })()`)) === true);
-  check('task detail renders inside requirements board tab', (await evaluate(`(() => { const activeTab = document.querySelector('.req-page .tabs .tab.active'); const nav = document.querySelector('.sidebar .side-item.active'); return !!activeTab && activeTab.textContent.includes('任务看板') && !!document.querySelector('.req-page .task-page') && !!nav && nav.textContent.includes('需求管理'); })()`)) === true);
+  check('task detail opens under the agent tasks sidebar', (await evaluate(`(() => { const nav = document.querySelector('.sidebar .side-item.active'); return !!document.querySelector('#main.main-task .task-page') && !document.querySelector('.req-page .tabs') && !!nav && nav.textContent.includes('Agent 任务'); })()`)) === true);
   check('task header shows task info', (await evaluate(`document.querySelector('.task-page-title')?.textContent.includes('缺陷修复 · 订单导出超时') && document.querySelector('.task-page-badges')?.textContent.includes('缺陷修复') && document.querySelector('.task-page-badges')?.textContent.includes('运行中')`)) === true);
   check('task detail hides progress bar', (await evaluate(`!document.querySelector('.task-progress-strip')`)) === true);
   check('workspace file tree rendered', (await evaluate(`document.querySelectorAll('.task-file-row').length`)) === 3);
@@ -128,8 +128,8 @@ try {
   check('approve completes task', true);
 
   await evaluate(`document.querySelector('[data-action="back-task"]').click()`);
-  await waitDom(`location.hash === '#/requirements' && !!document.querySelector('.task-kanban')`);
-  check('back button returns to task board', (await evaluate(`document.querySelector('.sidebar') && !document.querySelector('#shell').classList.contains('no-sidebar')`)) === true);
+  await waitDom(`location.hash === '#/agents' && !!document.querySelector('.task-kanban')`);
+  check('back button returns to task board', (await evaluate(`document.querySelector('.sidebar .side-item.active')?.textContent.includes('Agent 任务') && !document.querySelector('#shell').classList.contains('no-sidebar')`)) === true);
 
   await evaluate(`location.hash = '#/agents'`);
   await waitDom(`!!document.querySelector('[data-action="open-task-page"][data-id="T-203"]')`);
@@ -147,12 +147,8 @@ try {
   check('back from agent list returns to list', (await evaluate(`!!document.querySelector('[data-action="open-task-page"][data-id="T-203"]')`)) === true);
 
   await evaluate(`location.hash = '#/requirements'`);
-  await waitDom(`!!document.querySelector('.task-kanban')`);
-  await evaluate(`document.querySelector('[data-action="open-task-page"][data-id="T-203"]').click()`);
-  await waitDom(`!!document.querySelector('.req-page .task-page-title')`);
-  await evaluate(`document.querySelector('.req-page [data-action="req-tab"][data-tab="list"]').click()`);
-  await waitDom(`location.hash === '#/requirements' && !!document.querySelector('.req-table')`);
-  check('switching requirements tab exits task detail', true);
+  await waitDom(`!!document.querySelector('.req-table')`);
+  check('requirements page no longer embeds the task board', (await evaluate(`!document.querySelector('.task-kanban') && !Array.from(document.querySelectorAll('.req-page > .tabs .tab')).some((tab) => tab.dataset.tab === 'board')`)) === true);
 
   await evaluate(`document.querySelector('[data-action="open-req"][data-id="RQ-102"]').click()`);
   await waitDom(`!!document.querySelector('#req-edit-status')`);
@@ -161,8 +157,8 @@ try {
   await waitDom(`document.body.innerText.includes('已自动创建')`);
   await evaluate(`document.querySelector('.overlay.open [data-action="close-overlay"]').click()`);
   await sleep(250);
-  await evaluate(`document.querySelector('.req-page [data-action="req-tab"][data-tab="board"]').click()`);
-  await waitDom(`!!document.querySelector('.task-kanban')`);
+  await evaluate(`document.querySelector('.sidebar [data-action="nav"][data-route="#/agents"]').click()`);
+  await waitDom(`location.hash === '#/agents' && !!document.querySelector('.task-kanban')`);
   const autoCard = await evaluate(`(() => { const card = Array.from(document.querySelectorAll('.task-card')).find((el) => el.textContent.includes('需求开发 · 异常单自动分派')); if (!card) return null; return { owner: card.textContent.includes('责任人 陈晨'), column: card.closest('.kanban-col')?.querySelector('.kanban-head b')?.textContent.trim() || '' }; })()`);
   check('requirement status change auto-creates agent task', !!autoCard && autoCard.column === '排队中', JSON.stringify(autoCard));
   check('auto-created task shows requirement owner', !!autoCard && autoCard.owner === true, JSON.stringify(autoCard));

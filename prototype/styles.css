@@ -784,6 +784,12 @@ tr.row-click { cursor: pointer; }
 .req-table-wrap { min-height: 300px; }
 .req-page-fill .req-table-wrap { flex: 1; height: auto; overflow: auto; }
 .req-table { min-width: 980px; }
+.defect-table { min-width: 1040px; }
+.defect-title-cell { flex-direction: column; align-items: flex-start; gap: 2px; }
+.defect-title-cell b, .defect-table .cell-main > span:last-child { max-width: 100%; }
+.defect-table .cell-main > span:last-child { white-space: nowrap; }
+.defect-req-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.defect-req-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; color: #64748b; }
 .req-filter-row th { padding: 6px 7px; background: #fff; border-bottom: 1px solid var(--border); }
 .req-filter-row .input, .req-filter-row .select { width: 100%; height: 28px; min-width: 0; padding: 0 8px; border-radius: 7px; font-size: 10.5px; }
 
@@ -1432,9 +1438,10 @@ tr.row-click { cursor: pointer; }
 
 /* ---------------- Agent task board ---------------- */
 
+.agents-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.agents-page > .page-head { flex: 0 0 auto; }
+.agents-page > .task-board { flex: 1; min-height: 0; }
 .task-board { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.req-page-fill > .task-board { flex: 1; min-height: 0; }
-.task-board-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .task-board .kanban { flex: 1; min-height: 0; }
 .task-kanban .kanban-col { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
 .task-card { cursor: pointer; }
@@ -1536,8 +1543,6 @@ tr.row-click { cursor: pointer; }
 /* ---------------- Agent task detail ---------------- */
 
 .main.main-task { height: calc(100vh - 60px); min-height: 0; padding: 22px 28px 20px; overflow: hidden; display: flex; flex-direction: column; }
-.main.main-task.main-fill { padding-bottom: 20px; }
-.req-task-embedded > .tabs { margin-bottom: 12px; }
 .task-page { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, .045); }
 .task-page-head { flex: 0 0 auto; display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; padding: 16px 28px 12px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, #fbfdff, #fff); }
 .task-head-main { flex: 1; min-width: 0; }

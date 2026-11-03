@@ -82,7 +82,7 @@ try {
 
   const sidebarText = await evaluate(`document.querySelector('.sidebar')?.innerText || ''`);
   check('batch release nav removed', !sidebarText.includes('批次发布'), sidebarText);
-  check('overview, agent and runtime nav removed', !['项目总览', 'Agent 任务', '应用运行'].some((label) => sidebarText.includes(label)), sidebarText);
+  check('overview and runtime nav removed while agent tasks stay', !['项目总览', '应用运行'].some((label) => sidebarText.includes(label)) && sidebarText.includes('Agent 任务'), sidebarText);
 
   const newButton = await evaluate(`(() => { const btn = document.querySelector('#main .card [data-action="new-requirement"]'); const table = document.querySelector('#main .req-table'); if (!btn || !table) return null; return { text: btn.textContent.trim(), aboveTable: btn.getBoundingClientRect().top < table.getBoundingClientRect().top, leftAligned: btn.getBoundingClientRect().left <= table.getBoundingClientRect().left + 2 }; })()`);
   check('new requirement button at list top-left', !!newButton && newButton.text.includes('新建需求') && newButton.aboveTable && newButton.leftAligned, JSON.stringify(newButton));
@@ -164,10 +164,11 @@ try {
   const deferred = await evaluate(`(() => { const rows = Array.from(document.querySelectorAll('.req-table tbody tr[data-id]')); const target = rows.find((tr) => tr.dataset.id === 'RQ-104'); return { hasTag: !!target && target.textContent.includes('已延期'), status: target?.querySelector('td:nth-child(3) .pill')?.textContent.trim(), count: rows.filter((tr) => tr.textContent.includes('已延期')).length }; })()`);
   check('deferred items keep a valid stage and tag', deferred.hasTag && deferred.status === '设计' && deferred.count === 2, JSON.stringify(deferred));
 
-  await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="board"]').click()`);
-  await waitDom(`document.querySelectorAll('.kanban-col').length === 5`);
-  const boardHeads = await evaluate(`Array.from(document.querySelectorAll('.kanban-head b')).map((el) => el.textContent.trim())`);
-  check('task board uses execution stages', JSON.stringify(boardHeads) === JSON.stringify(['排队中', '运行中', '待确认', '已完成', '失败']), boardHeads.join(','));
+  const requirementTabs = await evaluate(`Array.from(document.querySelectorAll('.req-page > .tabs .tab')).map((el) => ({ tab: el.dataset.tab, label: el.textContent.trim() }))`);
+  check('requirements tabs move the board out and add defects', requirementTabs.length === 3 && requirementTabs[0].tab === 'list' && requirementTabs[1].tab === 'defects' && requirementTabs[2].tab === 'plan' && !requirementTabs.some((item) => item.tab === 'board'), JSON.stringify(requirementTabs));
+  await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="defects"]').click()`);
+  await waitDom(`document.querySelectorAll('.defect-table tbody tr[data-id]').length === 5`);
+  check('defect tab renders current iteration defects', (await evaluate(`Array.from(document.querySelectorAll('.defect-table tbody tr[data-id]')).map((tr) => tr.dataset.id).join(',')`)) === 'BUG-201,BUG-202,BUG-203,BUG-204,BUG-205');
   await evaluate(`document.querySelector('[data-action="req-tab"][data-tab="list"]').click()`);
   await waitDom(`document.querySelectorAll('.req-table tbody tr[data-id]').length === 10`);
 

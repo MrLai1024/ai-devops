@@ -102,7 +102,7 @@ try {
 
   await evaluate(`(() => { const card = Array.from(document.querySelectorAll('.project-card')).find((el) => el.innerText.includes('测试项目')); card.querySelector('[data-action="release-project"]').click(); return true; })()`);
   await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-release-project"]')`);
-  check('release project asks for confirmation', (await evaluate(`document.querySelector('.overlay.open .drawer')?.innerText.includes('释放后项目将被删除')`)) === true);
+  check('release project asks for confirmation', (await evaluate(`(() => { const text = document.querySelector('.overlay.open .drawer')?.innerText || ''; return text.includes('释放后项目将被删除') && text.includes('条缺陷'); })()`)) === true);
   await sleep(350);
   await send('Page.captureScreenshot', { format: 'png' }).then((shot) => writeFileSync('d:/Code/AI/ai-devops/.tmp-e2e/project-release.png', Buffer.from(shot.data, 'base64')));
   await evaluate(`document.querySelector('.overlay.open [data-action="confirm-release-project"]').click()`);

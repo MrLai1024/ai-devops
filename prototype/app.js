@@ -475,6 +475,16 @@
     { id: 'RQ-115', title: '知识库文档同步', projectId: 'p-support', iterationId: 'it-25', status: '测试', priority: 'P2', owner: '王磊', apps: ['support-bot'], updated: '09:12', ready: true, desc: '支持飞书/本地 Markdown 文档增量同步到知识库。', acceptance: '同步延迟 ≤5 分钟；失败可重试；删除可传播。', taskId: null }
   ];
 
+  const DEFECTS = [
+    { id: 'BUG-201', title: '订单导出大批量数据时接口超时', projectId: 'p-order', iterationId: 'it-24', requirementId: 'RQ-104', severity: '严重', priority: 'P1', status: '处理中', owner: '陈晨', reporter: '李娜', updated: '10:26', createdAt: '2026-11-01 16:20', taskId: 'T-207', desc: '导出 50 万行订单时接口在 30 秒后超时，导出任务一直停留在处理中，用户无法下载文件。' },
+    { id: 'BUG-202', title: '订单搜索组合条件查询缓慢', projectId: 'p-order', iterationId: 'it-24', requirementId: 'RQ-118', severity: '一般', priority: 'P2', status: '处理中', owner: '张明', reporter: '张明', updated: '10:12', createdAt: '2026-11-01 14:05', taskId: 'T-209', desc: '同时选择时间范围、订单状态与仓库时，p95 延迟升至 1.8 秒，慢查询日志命中未使用索引的 SQL。' },
+    { id: 'BUG-203', title: '移动端履约看板指标卡重叠', projectId: 'p-order', iterationId: 'it-24', requirementId: 'RQ-103', severity: '一般', priority: 'P2', status: '待验证', owner: '张明', reporter: '陈晨', updated: '09:58', createdAt: '2026-10-31 11:30', taskId: null, desc: 'iOS Safari 窄屏下，履约时效与异常单两张指标卡重叠，部分数值不可见。' },
+    { id: 'BUG-204', title: '异常单自动分派命中离职人员', projectId: 'p-order', iterationId: 'it-24', requirementId: 'RQ-102', severity: '严重', priority: 'P1', status: '待处理', owner: '陈晨', reporter: '李娜', updated: '09:46', createdAt: '2026-11-02 09:12', taskId: null, desc: '已停用账号仍出现在分派候选列表中，异常单被分派后无人处理并触发超时升级。' },
+    { id: 'BUG-205', title: '履约节点配置修改后历史订单状态错乱', projectId: 'p-order', iterationId: 'it-24', requirementId: 'RQ-111', severity: '致命', priority: 'P0', status: '待处理', owner: '张明', reporter: '张明', updated: '09:31', createdAt: '2026-11-03 08:55', taskId: null, desc: '调整履约节点顺序后，部分历史订单被重新映射到新节点，详情页展示的状态与操作记录不一致。' },
+    { id: 'BUG-206', title: '客户标签导入错误行提示缺失', projectId: 'p-customer', iterationId: 'it-23', requirementId: 'RQ-105', severity: '轻微', priority: 'P3', status: '已关闭', owner: '李娜', reporter: '李娜', updated: '昨天', createdAt: '2026-09-28 15:40', taskId: null, desc: 'CSV 中存在重复标签时导入成功，但结果页没有列出被忽略的行号。' },
+    { id: 'BUG-207', title: '知识库检索结果缺少引用来源', projectId: 'p-support', iterationId: 'it-25', requirementId: 'RQ-107', severity: '严重', priority: 'P1', status: '待处理', owner: '王磊', reporter: '王磊', updated: '10:20', createdAt: '2026-11-03 09:25', taskId: null, desc: '智能问答返回的答案没有附带文档引用，无法追溯命中的知识片段。' }
+  ];
+
   const REQUIREMENT_COMMENTS = [
     { id: 'C-201', requirementId: 'RQ-101', author: '张明', time: '10:02', content: '已补充超时阈值配置范围，请确认是否需要按仓库区分。' },
     { id: 'C-202', requirementId: 'RQ-101', author: '陈晨', time: '10:12', content: '建议先覆盖华东仓与华南仓，后续扩展到全部仓库。' },
@@ -1386,7 +1396,16 @@ func Next(state State, picked bool) State {
     reqAppFilter: 'all',
     reqReleaseFilter: 'all',
     reqUpdatedFilter: '',
-    taskFilter: 'all',
+    defectPage: 1,
+    defectIdFilter: '',
+    defectTitleFilter: '',
+    defectSeverityFilter: 'all',
+    defectStatusFilter: 'all',
+    defectPriorityFilter: 'all',
+    defectOwnerFilter: 'all',
+    defectReqFilter: 'all',
+    defectUpdatedFilter: '',
+    defectSeq: 207,
     pipelineFilter: 'all',
     repoTab: 'code',
     repoFile: 'README.md',
@@ -1421,7 +1440,7 @@ func Next(state State, picked bool) State {
     notificationsRead: false,
     pendingReqId: null,
     pendingTaskId: null,
-    taskReturn: 'board',
+    taskReturn: 'agents',
     taskAutoScroll: true,
     pendingCapId: null,
     pendingAppId: null,
@@ -1450,10 +1469,12 @@ func Next(state State, picked bool) State {
   const userById = (id) => USERS.find((item) => item.id === id);
   const taskById = (id) => TASKS.find((item) => item.id === id);
   const requirementById = (id) => REQUIREMENTS.find((item) => item.id === id);
+  const defectById = (id) => DEFECTS.find((item) => item.id === id);
   const capabilityById = (id) => CAPABILITIES.find((item) => item.id === id);
   const projectIterations = (projectId) => ITERATIONS.filter((item) => item.projectId === projectId);
   const projectRequirements = (projectId) => REQUIREMENTS.filter((item) => item.projectId === projectId);
   const iterationRequirements = (iterationId) => REQUIREMENTS.filter((item) => item.iterationId === iterationId);
+  const iterationDefects = (iterationId) => DEFECTS.filter((item) => item.iterationId === iterationId);
   const projectTasks = (projectId) => TASKS.filter((item) => item.projectId === projectId);
   const repoById = (id) => REPOS.find((item) => item.id === id);
   const releaseById = (id) => RELEASES.find((item) => item.id === id);
@@ -1480,6 +1501,18 @@ func Next(state State, picked bool) State {
     state.reqAppFilter = 'all';
     state.reqReleaseFilter = 'all';
     state.reqUpdatedFilter = '';
+  }
+
+  function resetDefectFilters() {
+    state.defectPage = 1;
+    state.defectIdFilter = '';
+    state.defectTitleFilter = '';
+    state.defectSeverityFilter = 'all';
+    state.defectStatusFilter = 'all';
+    state.defectPriorityFilter = 'all';
+    state.defectOwnerFilter = 'all';
+    state.defectReqFilter = 'all';
+    state.defectUpdatedFilter = '';
   }
 
   function resetKnowledgeFilters() {
@@ -1600,7 +1633,7 @@ func Next(state State, picked bool) State {
     syncRepoProject();
     syncDocProject();
     const meta = taskIdFromRoute()
-      ? ROUTES[state.taskReturn === 'agents' ? '#/agents' : '#/requirements']
+      ? ROUTES['#/agents']
       : (repoRouteInfo() ? ROUTES['#/code'] : (isKnowledgeRoute() ? ROUTES['#/knowledge'] : (ROUTES[state.route] || ROUTES['#/projects'])));
     const sidebar = $('#sidebar');
     const shell = $('#shell');
@@ -1622,6 +1655,7 @@ func Next(state State, picked bool) State {
     const requirementCount = iteration ? iterationRequirements(iteration.id).length : 0;
     const items = [
       { page: 'requirements', label: '需求管理', icon: 'layers', route: '#/requirements' },
+      { page: 'agents', label: 'Agent 任务', icon: 'bot', route: '#/agents' },
       { page: 'code', label: '代码仓', icon: 'code', route: '#/code' },
       { page: 'knowledge', label: '知识库', icon: 'file', route: '#/knowledge' },
       { page: 'pipelines', label: '流水线', icon: 'pipe', route: '#/pipelines' },
@@ -1685,10 +1719,9 @@ func Next(state State, picked bool) State {
     const main = $('#main');
     const scroll = window.scrollY;
     const isTaskPage = !!taskIdFromRoute();
-    const embeddedTask = isTaskPage && state.taskReturn !== 'agents';
     clearTaskTimers();
     main.innerHTML = renderPage(meta);
-    main.classList.toggle('main-fill', isTaskPage ? embeddedTask : meta.page === 'requirements' && ['list', 'board'].includes(state.reqTab));
+    main.classList.toggle('main-fill', isTaskPage ? false : (meta.page === 'requirements' && ['list', 'defects'].includes(state.reqTab)) || meta.page === 'agents');
     main.classList.toggle('main-task', isTaskPage);
     main.classList.remove('page-in');
     void main.offsetWidth;
@@ -1730,7 +1763,7 @@ func Next(state State, picked bool) State {
     if (docInfo) return renderDocRoute(docInfo);
     if (state.route.startsWith('#/knowledge/')) return renderDocNotFound({ scope: state.route.startsWith('#/knowledge/global') ? 'global' : 'project' });
     const taskId = taskIdFromRoute();
-    if (taskId) return state.taskReturn === 'agents' ? renderTaskDetail(taskId) : renderRequirements(taskId);
+    if (taskId) return renderTaskDetail(taskId);
     switch (meta.page) {
       case 'projects': return renderProjects();
       case 'members': return renderMembers();
@@ -1885,7 +1918,7 @@ func Next(state State, picked bool) State {
   }
 
   /* ---------------- pages: requirements ---------------- */
-  function renderRequirements(taskId = null) {
+  function renderRequirements() {
     const iteration = currentIteration();
     const stats = iterationStats(iteration.id);
     const allReqs = iterationRequirements(iteration.id);
@@ -1907,18 +1940,20 @@ func Next(state State, picked bool) State {
     const ownerOptions = [...new Set(allReqs.map((item) => item.owner))];
     const appOptions = [...new Set(allReqs.flatMap((item) => item.apps || []))];
     const releaseOptions = iterationReleases(iteration.id);
-    const activeTab = taskId ? 'board' : state.reqTab;
+    const defectCount = iterationDefects(iteration.id).length;
+    const activeTab = ['list', 'defects', 'plan'].includes(state.reqTab) ? state.reqTab : 'list';
+    state.reqTab = activeTab;
     const tabs = [
-      { id: 'list', label: '需求列表' },
-      { id: 'board', label: '任务看板' },
+      { id: 'list', label: '需求列表', count: stats.total },
+      { id: 'defects', label: '缺陷单', count: defectCount },
       { id: 'plan', label: '发布管理' }
     ];
     return `
-      <div class="req-page ${taskId || activeTab === 'list' || activeTab === 'board' ? 'req-page-fill' : ''}${taskId ? ' req-task-embedded' : ''}">
+      <div class="req-page ${activeTab === 'list' || activeTab === 'defects' ? 'req-page-fill' : ''}">
         <div class="tabs">
-          ${tabs.map((tab) => `<button class="tab ${activeTab === tab.id ? 'active' : ''}" type="button" data-action="req-tab" data-tab="${tab.id}">${tab.label}${tab.id === 'list' ? `<span class="tab-count">${stats.total}</span>` : ''}</button>`).join('')}
+          ${tabs.map((tab) => `<button class="tab ${activeTab === tab.id ? 'active' : ''}" type="button" data-action="req-tab" data-tab="${tab.id}">${tab.label}${tab.count == null ? '' : `<span class="tab-count">${tab.count}</span>`}</button>`).join('')}
         </div>
-        ${taskId ? renderTaskDetail(taskId) : activeTab === 'list' ? requirementListView(reqs, ownerOptions, appOptions, releaseOptions) : activeTab === 'board' ? agentTaskBoardView() : releaseManagementView(iteration)}
+        ${activeTab === 'list' ? requirementListView(reqs, ownerOptions, appOptions, releaseOptions) : activeTab === 'defects' ? defectListView(iteration) : releaseManagementView(iteration)}
       </div>
     `;
   }
@@ -1985,24 +2020,89 @@ func Next(state State, picked bool) State {
     </section>`;
   }
 
-  function requirementBoardView(reqs) {
-    const columns = [
-      { status: '分析', tone: 'info' },
-      { status: '设计', tone: 'purple' },
-      { status: '开发', tone: 'info' },
-      { status: '测试', tone: 'warning' },
-      { status: '发布', tone: 'success' }
-    ];
-    return `<div class="kanban">${columns.map((column) => {
-      const items = reqs.filter((item) => item.status === column.status);
-      return `<div class="kanban-col">
-        <div class="kanban-head"><span class="dot ${column.tone}"></span><b>${column.status}</b><span class="kanban-count">${items.length}</span></div>
-        ${items.length ? items.map((item) => `<article class="kanban-card" data-action="open-req" data-id="${item.id}" tabindex="0" role="button">
-          <b>${esc(item.title)}</b>
-          <div class="kanban-card-meta">${priorityPill(item.priority)}<span class="faint" style="font-size:9.5px;">${esc(item.id)}</span>${item.deferredTo ? '<span class="tag">延期</span>' : ''}<span style="margin-left:auto;" class="avatar-sm">${esc(item.owner.slice(0, 1))}</span></div>
-        </article>`).join('') : '<div class="kanban-empty">暂无需求</div>'}
-      </div>`;
-    }).join('')}</div>`;
+  const defectSeverityPill = (severity) => `<span class="pill ${severity === '致命' || severity === '严重' ? 'danger' : severity === '一般' ? 'warning' : 'neutral'}">${esc(severity)}</span>`;
+  const defectStatusPill = (status) => `<span class="pill ${status === '处理中' ? 'info' : status === '待验证' ? 'warning' : status === '已关闭' ? 'success' : 'neutral'}">${esc(status)}</span>`;
+
+  function defectListView(iteration) {
+    const allDefects = iterationDefects(iteration.id);
+    const idQuery = state.defectIdFilter.trim().toLowerCase();
+    const titleQuery = state.defectTitleFilter.trim().toLowerCase();
+    const updatedQuery = state.defectUpdatedFilter.trim().toLowerCase();
+    const defects = allDefects.filter((item) => {
+      const matchesId = !idQuery || item.id.toLowerCase().includes(idQuery);
+      const matchesTitle = !titleQuery || `${item.title} ${item.desc}`.toLowerCase().includes(titleQuery);
+      const matchesSeverity = state.defectSeverityFilter === 'all' || item.severity === state.defectSeverityFilter;
+      const matchesStatus = state.defectStatusFilter === 'all' || item.status === state.defectStatusFilter;
+      const matchesPriority = state.defectPriorityFilter === 'all' || item.priority === state.defectPriorityFilter;
+      const matchesOwner = state.defectOwnerFilter === 'all' || item.owner === state.defectOwnerFilter;
+      const matchesReq = state.defectReqFilter === 'all' || (state.defectReqFilter === 'none' ? !item.requirementId : item.requirementId === state.defectReqFilter);
+      const matchesUpdated = !updatedQuery || String(item.updated).toLowerCase().includes(updatedQuery);
+      return matchesId && matchesTitle && matchesSeverity && matchesStatus && matchesPriority && matchesOwner && matchesReq && matchesUpdated;
+    });
+    const severityOptions = [['all', '全部'], ['致命', '致命'], ['严重', '严重'], ['一般', '一般'], ['轻微', '轻微']];
+    const statusOptions = [['all', '全部'], ['待处理', '待处理'], ['处理中', '处理中'], ['待验证', '待验证'], ['已关闭', '已关闭']];
+    const priorityOptions = [['all', '全部'], ['P0', 'P0'], ['P1', 'P1'], ['P2', 'P2'], ['P3', 'P3']];
+    const ownerOptions = [...new Set([
+      ...allDefects.map((item) => item.owner),
+      ...(currentProject().members || []).map((member) => userById(member.userId)?.name).filter(Boolean)
+    ])];
+    const requirementOptions = projectRequirements(iteration.projectId);
+    const pageSize = 10;
+    const totalPages = Math.max(1, Math.ceil(defects.length / pageSize));
+    const currentPage = Math.min(Math.max(1, state.defectPage || 1), totalPages);
+    state.defectPage = currentPage;
+    const pageDefects = defects.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    return `<section class="card">
+      <div class="card-body" style="padding-bottom:14px;">
+        <div class="flex" style="flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+          <button class="btn btn-primary btn-sm" type="button" data-action="new-defect">${icon('plus', 14)} 新建缺陷</button>
+          <button class="card-link" style="margin-left:auto;" type="button" data-action="reset-defect-filters">重置筛选</button>
+        </div>
+        <div class="table-wrap req-table-wrap">
+          <table class="req-table defect-table">
+            <colgroup><col style="width:96px"><col><col style="width:100px"><col style="width:98px"><col style="width:82px"><col style="width:112px"><col style="width:220px"><col style="width:90px"><col style="width:58px"></colgroup>
+            <thead>
+              <tr><th>缺陷编号</th><th>缺陷标题</th><th>严重程度</th><th>状态</th><th>优先级</th><th>责任人</th><th>关联需求</th><th>更新</th><th></th></tr>
+              <tr class="req-filter-row">
+                <th><input id="defect-id-filter" class="input" type="search" value="${esc(state.defectIdFilter)}" placeholder="编号" autocomplete="off" aria-label="按缺陷编号筛选"></th>
+                <th><input id="defect-title-filter" class="input" type="search" value="${esc(state.defectTitleFilter)}" placeholder="输入标题或描述查询" autocomplete="off" aria-label="按缺陷标题筛选"></th>
+                <th><select id="defect-severity-filter" class="select" data-action="defect-severity-filter" aria-label="按严重程度筛选">${severityOptions.map(([value, label]) => `<option value="${value}" ${state.defectSeverityFilter === value ? 'selected' : ''}>${label}</option>`).join('')}</select></th>
+                <th><select id="defect-status-filter" class="select" data-action="defect-status-filter" aria-label="按状态筛选">${statusOptions.map(([value, label]) => `<option value="${value}" ${state.defectStatusFilter === value ? 'selected' : ''}>${label}</option>`).join('')}</select></th>
+                <th><select id="defect-priority-filter" class="select" data-action="defect-priority-filter" aria-label="按优先级筛选">${priorityOptions.map(([value, label]) => `<option value="${value}" ${state.defectPriorityFilter === value ? 'selected' : ''}>${label}</option>`).join('')}</select></th>
+                <th><select id="defect-owner-filter" class="select" data-action="defect-owner-filter" aria-label="按责任人筛选"><option value="all">全部</option>${ownerOptions.map((owner) => `<option value="${esc(owner)}" ${state.defectOwnerFilter === owner ? 'selected' : ''}>${esc(owner)}</option>`).join('')}</select></th>
+                <th><select id="defect-req-filter" class="select" data-action="defect-req-filter" aria-label="按关联需求筛选"><option value="all">全部</option><option value="none" ${state.defectReqFilter === 'none' ? 'selected' : ''}>未关联</option>${requirementOptions.map((req) => `<option value="${req.id}" ${state.defectReqFilter === req.id ? 'selected' : ''}>${esc(req.id)} · ${esc(req.title)}</option>`).join('')}</select></th>
+                <th><input id="defect-updated-filter" class="input" type="search" value="${esc(state.defectUpdatedFilter)}" placeholder="更新时间" autocomplete="off" aria-label="按更新时间筛选"></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pageDefects.length ? pageDefects.map((item) => {
+                const req = item.requirementId ? requirementById(item.requirementId) : null;
+                return `<tr class="row-click" data-action="open-defect" data-id="${item.id}" tabindex="0">
+                  <td><span class="cell-id">${esc(item.id)}</span></td>
+                  <td><div class="cell-main defect-title-cell"><b>${esc(item.title)}</b><small>报告人 ${esc(item.reporter)} · 创建于 ${esc(item.createdAt)}</small></div></td>
+                  <td>${defectSeverityPill(item.severity)}</td>
+                  <td>${defectStatusPill(item.status)}</td>
+                  <td>${priorityPill(item.priority)}</td>
+                  <td><div class="cell-main"><span class="avatar-sm" style="background:#e0f2fe;color:#0369a1;">${esc(item.owner.slice(0, 1))}</span><span>${esc(item.owner)}</span></div></td>
+                  <td>${req ? `<div class="defect-req-cell"><span class="tag">${esc(req.id)}</span><span class="defect-req-title" title="${esc(req.title)}">${esc(req.title)}</span></div>` : '<span class="faint">未关联</span>'}</td>
+                  <td class="nowrap">${esc(item.updated)}</td>
+                  <td><span class="muted">→</span></td>
+                </tr>`;
+              }).join('') : `<tr><td colspan="9">${emptyTable('当前筛选下没有缺陷')}</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span class="pagination-info">共 ${defects.length} 条缺陷 · 第 ${currentPage} / ${totalPages} 页</span>
+          <div class="pagination-controls">
+            <button class="page-btn" type="button" data-action="defect-page" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+            ${Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => `<button class="page-btn ${page === currentPage ? 'active' : ''}" type="button" data-action="defect-page" data-page="${page}">${page}</button>`).join('')}
+            <button class="page-btn" type="button" data-action="defect-page" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
+          </div>
+        </div>
+      </div>
+    </section>`;
   }
 
   function agentTaskBoardView() {
@@ -2015,10 +2115,6 @@ func Next(state State, picked bool) State {
       { label: '失败', statuses: ['失败', '已取消', '已中止'], tone: 'danger' }
     ];
     return `<div class="task-board">
-      <div class="task-board-head">
-        <div><div class="section-title">Agent 任务</div><div class="section-sub">当前项目 · ${tasks.length} 个执行任务 · 按执行状态分组</div></div>
-        <button class="btn btn-primary btn-sm" type="button" data-action="new-task">${icon('plus', 14)} 新建任务</button>
-      </div>
       <div class="kanban task-kanban">
         ${columns.map((column) => {
           const items = tasks.filter((task) => column.statuses.includes(task.status));
@@ -2077,7 +2173,7 @@ func Next(state State, picked bool) State {
   }
 
   function taskBoardCard(task) {
-    return `<article class="kanban-card task-card" data-action="open-task-page" data-id="${task.id}" data-from="board" tabindex="0" role="button">
+    return `<article class="kanban-card task-card" data-action="open-task-page" data-id="${task.id}" tabindex="0" role="button">
       <div class="task-card-top"><span class="task-type">${icon('bot', 11)} ${esc(task.type || task.agent)}</span>${pill(task.status)}</div>
       <b>${esc(task.title)}</b>
       <div class="task-card-agent">${icon('bot', 11)} ${esc(task.agent)}${task.requirementId ? ` · ${esc(task.requirementId)}` : ''}</div>
@@ -2119,42 +2215,11 @@ func Next(state State, picked bool) State {
 
   /* ---------------- pages: agents ---------------- */
   function renderAgents() {
-    const tasks = projectTasks(state.projectId).filter((item) => state.taskFilter === 'all' || item.status === state.taskFilter);
-    const running = projectTasks(state.projectId).filter((item) => item.status === '运行中').length;
-    const waiting = projectTasks(state.projectId).filter((item) => ['待确认', '待审批'].includes(item.status)).length;
-    return `
-      ${pageHead('Agent 任务', `项目：${esc(currentProject().name)} · Agent 半自动执行，关键节点人工审批`, `<button class="btn btn-primary" type="button" data-action="new-task">${icon('plus', 14)} 新建任务</button>`)}
-      <div class="kpi-grid">
-        ${kpi('运行中', String(running), '沙箱与 worker 正常', { icon: 'bot', hero: true })}
-        ${kpi('待确认 / 待审批', String(waiting), '需要人工处理', { icon: 'clock' })}
-        ${kpi('Agent 成功率', '96.2%', '<span class="kpi-delta up">↑ 1.4%</span> 近 7 天', { icon: 'chart' })}
-        ${kpi('本周 Token', '84.2k', '成本 ¥126.40', { icon: 'cap' })}
-      </div>
-      <div class="chips" style="margin-bottom:12px;">
-        ${[{ id: 'all', label: '全部' }, { id: '运行中', label: '运行中' }, { id: '待确认', label: '待确认' }, { id: '待审批', label: '待审批' }, { id: '成功', label: '成功' }, { id: '失败', label: '失败' }].map((item) => `<button class="chip ${state.taskFilter === item.id ? 'active' : ''}" type="button" data-action="task-filter" data-filter="${item.id}">${item.label}</button>`).join('')}
-      </div>
-      <section class="card">
-        <div class="card-body" style="padding-top:12px;">
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>任务</th><th>Agent</th><th>状态</th><th>进度</th><th>Token</th><th>耗时</th><th>更新</th><th></th></tr></thead>
-              <tbody>
-                ${tasks.length ? tasks.map((task) => `<tr class="row-click" data-action="open-task-page" data-id="${task.id}" data-from="agents" tabindex="0">
-                  <td><div class="cell-main"><b>${esc(task.title)}</b><small>${esc(task.id)} · ${esc(projectById(task.projectId)?.name || '')}</small></div></td>
-                  <td><span class="tag">${icon('bot', 11)} ${esc(task.agent)}</span></td>
-                  <td>${pill(task.status)}</td>
-                  <td style="min-width:120px;">${progressLabel(task.progress, task.status === '失败' ? 'danger' : task.status === '成功' ? 'soft' : task.status === '待确认' || task.status === '待审批' ? 'warn' : '')}</td>
-                  <td>${esc(task.tokens)}</td>
-                  <td>${esc(task.duration)}</td>
-                  <td class="nowrap">${esc(task.updated)}</td>
-                  <td><span class="muted">→</span></td>
-                </tr>`).join('') : `<tr><td colspan="8">${emptyTable('当前筛选下没有任务')}</td></tr>`}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    `;
+    const tasks = projectTasks(state.projectId);
+    return `<div class="agents-page">
+      ${pageHead('Agent 任务', `项目：${esc(currentProject().name)} · ${tasks.length} 个执行任务 · 按执行状态分组`, `<button class="btn btn-primary" type="button" data-action="new-task">${icon('plus', 14)} 新建任务</button>`)}
+      ${agentTaskBoardView()}
+    </div>`;
   }
 
   /* ---------------- pages: task detail ---------------- */
@@ -2200,7 +2265,7 @@ func Next(state State, picked bool) State {
     }
     ensureTaskView(task);
     const project = projectById(task.projectId);
-    const backLabel = state.taskReturn === 'agents' ? '返回 Agent 任务' : '返回任务看板';
+    const backLabel = '返回 Agent 任务';
     const reviewable = ['待确认', '待审批'].includes(task.status);
     const retryable = ['失败', '已取消', '已中止', '待修改'].includes(task.status);
     const canStop = ['运行中', '排队中'].includes(task.status);
@@ -2414,22 +2479,16 @@ func Next(state State, picked bool) State {
     return `收到。我已把这条补充纳入「${task.title}」的执行上下文，会在下一步处理中体现。`;
   }
 
-  function openTaskPage(id, from = 'board') {
+  function openTaskPage(id) {
     const task = taskById(id);
     if (!task) return;
-    state.taskReturn = from === 'agents' ? 'agents' : 'board';
-    if (state.taskReturn === 'board') state.reqTab = 'board';
+    state.taskReturn = 'agents';
     navigate(`#/tasks/${encodeURIComponent(task.id)}`);
   }
 
   function backFromTask() {
     clearTaskTimers();
-    if (state.taskReturn === 'agents') {
-      navigate('#/agents');
-      return;
-    }
-    state.reqTab = 'board';
-    navigate('#/requirements');
+    navigate('#/agents');
   }
 
   function openRepoPage(repoId) {
@@ -3554,7 +3613,7 @@ func Next(state State, picked bool) State {
           </div>
           <div class="drawer-section">
             <div class="drawer-section-title">关联任务</div>
-            ${task ? `<button class="project-option" type="button" data-action="open-task-page" data-id="${task.id}" data-from="board"><span class="side-icon">${icon('bot', 15)}</span><span class="project-option-meta"><b>${esc(task.title)}</b><small>${esc(task.status)} · ${esc(task.agent)}</small></span><span style="margin-left:auto;">${pill(task.status)}</span></button>` : '<div class="empty-table">暂无关联任务</div>'}
+            ${task ? `<button class="project-option" type="button" data-action="open-task-page" data-id="${task.id}"><span class="side-icon">${icon('bot', 15)}</span><span class="project-option-meta"><b>${esc(task.title)}</b><small>${esc(task.status)} · ${esc(task.agent)}</small></span><span style="margin-left:auto;">${pill(task.status)}</span></button>` : '<div class="empty-table">暂无关联任务</div>'}
           </div>
         </div>
         <div class="drawer-section">
@@ -3683,6 +3742,96 @@ func Next(state State, picked bool) State {
         <div class="btn-row" style="justify-content:flex-end;margin-top:18px;"><button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="submit">确认延期</button></div>
       </form>`
     });
+  }
+
+  function defectOwnerOptions(project) {
+    return [...new Set([
+      ...(project.members || []).map((member) => userById(member.userId)?.name).filter(Boolean),
+      '张明'
+    ])];
+  }
+
+  function openDefectForm() {
+    const project = currentProject();
+    const iteration = currentIteration();
+    const owners = defectOwnerOptions(project);
+    const requirements = projectRequirements(project.id);
+    openPanel({
+      title: '新建缺陷', sub: `${esc(project.name)} · ${esc(iteration.name)}`, variant: 'modal',
+      body: `<form id="defect-form" data-form="new-defect">
+        <div class="field"><label for="defect-title">缺陷标题</label><input id="defect-title" name="title" class="input" required maxlength="120" placeholder="例如：订单导出批量数据时接口超时"></div>
+        <div class="field-row">
+          <div class="field"><label for="defect-severity">严重程度</label><select id="defect-severity" name="severity" class="select" required><option>致命</option><option selected>严重</option><option>一般</option><option>轻微</option></select></div>
+          <div class="field"><label for="defect-priority">优先级</label><select id="defect-priority" name="priority" class="select" required><option>P0</option><option selected>P1</option><option>P2</option><option>P3</option></select></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="defect-owner">责任人</label><select id="defect-owner" name="owner" class="select" required>${owners.map((owner) => `<option value="${esc(owner)}">${esc(owner)}</option>`).join('')}</select></div>
+          <div class="field"><label for="defect-requirement">关联需求（可选）</label><select id="defect-requirement" name="requirementId" class="select"><option value="">不关联</option>${requirements.map((req) => `<option value="${req.id}">${esc(req.id)} · ${esc(req.title)}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label for="defect-desc">缺陷描述 / 复现步骤</label><textarea id="defect-desc" name="desc" class="textarea" rows="5" required placeholder="描述现象、影响范围与复现步骤"></textarea></div>
+        <div class="form-hint">缺陷会进入当前迭代的缺陷单列表，并可交给 Agent 创建修复任务。</div>
+        <div class="btn-row" style="justify-content:flex-end;margin-top:18px;"><button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-primary" type="submit">创建缺陷</button></div>
+      </form>`
+    });
+  }
+
+  function openDefectDrawer(id) {
+    const defect = defectById(id);
+    if (!defect) return;
+    const project = projectById(defect.projectId) || currentProject();
+    const iteration = iterationById(defect.iterationId);
+    const req = defect.requirementId ? requirementById(defect.requirementId) : null;
+    const task = defect.taskId ? taskById(defect.taskId) : null;
+    const owners = defectOwnerOptions(project);
+    if (defect.owner && !owners.includes(defect.owner)) owners.unshift(defect.owner);
+    const requirements = projectRequirements(project.id);
+    const body = `
+      <form id="defect-edit-form" data-form="save-defect">
+        <input type="hidden" name="id" value="${esc(defect.id)}">
+        <div class="req-detail-grid">
+          <div class="req-detail-left">
+            <div class="drawer-section">
+              <div class="flex" style="flex-wrap:wrap;margin-bottom:12px;">${defectSeverityPill(defect.severity)}${defectStatusPill(defect.status)}${priorityPill(defect.priority)}<span class="tag">${esc(defect.id)}</span></div>
+              <div class="field"><label for="defect-edit-title">缺陷标题</label><input id="defect-edit-title" name="title" class="input" maxlength="120" required value="${esc(defect.title)}"></div>
+              <div class="field"><label for="defect-edit-desc">缺陷描述 / 复现步骤</label><textarea id="defect-edit-desc" name="desc" class="textarea" rows="8" required>${esc(defect.desc)}</textarea></div>
+            </div>
+            <div class="drawer-section">
+              <div class="drawer-section-title">修复任务</div>
+              ${task ? `<button class="relation-item" type="button" data-action="view-defect-task" data-id="${task.id}">
+                <span class="relation-icon">${icon('bot', 15)}</span>
+                <span class="relation-copy"><b>${esc(task.title)}</b><small>${esc(task.id)} · ${esc(task.agent)} · ${esc(task.status)}</small></span>
+                <span class="tag">${esc(task.steps)} steps</span>
+              </button>` : '<div class="empty-table">还没有修复任务，可交给 Agent 处理。</div>'}
+            </div>
+          </div>
+          <div class="req-detail-right">
+            <div class="drawer-section">
+              <div class="field"><label for="defect-edit-status">状态</label><select id="defect-edit-status" name="status" class="select">${['待处理', '处理中', '待验证', '已关闭'].map((status) => `<option ${defect.status === status ? 'selected' : ''}>${status}</option>`).join('')}</select></div>
+              <div class="field"><label for="defect-edit-severity">严重程度</label><select id="defect-edit-severity" name="severity" class="select">${['致命', '严重', '一般', '轻微'].map((severity) => `<option ${defect.severity === severity ? 'selected' : ''}>${severity}</option>`).join('')}</select></div>
+              <div class="field"><label for="defect-edit-priority">优先级</label><select id="defect-edit-priority" name="priority" class="select">${['P0', 'P1', 'P2', 'P3'].map((priority) => `<option ${defect.priority === priority ? 'selected' : ''}>${priority}</option>`).join('')}</select></div>
+              <div class="field"><label for="defect-edit-owner">责任人</label><select id="defect-edit-owner" name="owner" class="select">${owners.map((owner) => `<option value="${esc(owner)}" ${defect.owner === owner ? 'selected' : ''}>${esc(owner)}</option>`).join('')}</select></div>
+              <div class="field"><label for="defect-edit-requirement">关联需求</label><select id="defect-edit-requirement" name="requirementId" class="select"><option value="">不关联</option>${requirements.map((item) => `<option value="${item.id}" ${defect.requirementId === item.id ? 'selected' : ''}>${esc(item.id)} · ${esc(item.title)}</option>`).join('')}</select></div>
+            </div>
+            <div class="drawer-section">
+              <div class="drawer-section-title">缺陷信息</div>
+              <div class="meta-grid">
+                <div class="meta-item"><div class="meta-label">缺陷编号</div><div class="meta-value">${esc(defect.id)}</div></div>
+                <div class="meta-item"><div class="meta-label">报告人</div><div class="meta-value">${esc(defect.reporter)}</div></div>
+                <div class="meta-item"><div class="meta-label">所属迭代</div><div class="meta-value">${esc(iteration?.name || '—')}</div></div>
+                <div class="meta-item"><div class="meta-label">创建时间</div><div class="meta-value">${esc(defect.createdAt)}</div></div>
+                <div class="meta-item"><div class="meta-label">更新时间</div><div class="meta-value">${esc(defect.updated)}</div></div>
+                <div class="meta-item"><div class="meta-label">关联需求</div><div class="meta-value">${req ? esc(`${req.id} · ${req.title}`) : '未关联'}</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    `;
+    const footer = task
+      ? `<button class="btn btn-outline" type="button" data-action="close-overlay">关闭</button><button class="btn btn-primary" type="button" data-action="view-defect-task" data-id="${task.id}">查看修复任务</button>`
+      : `<button class="btn btn-outline" type="button" data-action="close-overlay">关闭</button><button class="btn btn-primary" type="button" data-action="assign-defect-agent" data-id="${defect.id}">${icon('bot', 14)} 交给 Agent 修复</button>`;
+    const headerActions = `<button class="btn btn-primary btn-sm" type="submit" form="defect-edit-form">保存修改</button>`;
+    openPanel({ title: `${esc(defect.id)} · ${esc(defect.title)}`, sub: `${esc(project.name)} · 报告人 ${esc(defect.reporter)}`, body, footer, extraWide: true, headerActions });
   }
 
   function openTaskDrawer(id) {
@@ -4144,6 +4293,7 @@ func Next(state State, picked bool) State {
         if (action === 'remove-member') { openRemoveMember(id); return; }
         if (action === 'confirm-remove-member') { confirmRemoveMember(id); return; }
         if (action === 'new-requirement') { openRequirementForm(); return; }
+        if (action === 'new-defect') { openDefectForm(); return; }
         if (action === 'new-task') { openTaskForm(); return; }
         if (action === 'new-doc') { openDocForm(); return; }
         if (action === 'new-release') { openReleaseForm(); return; }
@@ -4151,12 +4301,16 @@ func Next(state State, picked bool) State {
         if (action === 'req-tab') { state.reqTab = target.dataset.tab; if (taskIdFromRoute()) { navigate('#/requirements'); return; } renderMain(); return; }
         if (action === 'req-page') { state.reqPage = Number(target.dataset.page) || 1; renderMain(); return; }
         if (action === 'reset-req-filters') { resetRequirementFilters(); renderMain(); return; }
+        if (action === 'defect-page') { state.defectPage = Number(target.dataset.page) || 1; renderMain(); return; }
+        if (action === 'reset-defect-filters') { resetDefectFilters(); renderMain(); return; }
+        if (action === 'open-defect') { openDefectDrawer(id); return; }
+        if (action === 'assign-defect-agent') { assignDefectAgent(id); return; }
+        if (action === 'view-defect-task') { closeOverlay(); openTaskPage(id); return; }
         if (action === 'open-req') { openRequirementDrawer(id); return; }
         if (action === 'save-req-edit') { saveRequirementEdit(id); return; }
         if (action === 'add-req-comment') { addRequirementComment(id); return; }
         if (action === 'req-detail-tab') { switchRequirementDetailTab(target.dataset.tab); return; }
         if (action === 'defer-req') { openDeferForm(id); return; }
-        if (action === 'task-filter') { state.taskFilter = target.dataset.filter; renderMain(); return; }
         if (action === 'open-repo') { openRepoPage(id); return; }
         if (action === 'repo-tab') { state.repoTab = target.dataset.tab; renderMain(); return; }
         if (action === 'repo-file') { state.repoFile = target.dataset.path; state.repoTab = 'code'; renderMain(); return; }
@@ -4165,7 +4319,7 @@ func Next(state State, picked bool) State {
         if (action === 'back-repo-mrs') { state.repoTab = 'mrs'; const info = repoRouteInfo(); if (info) navigate(`#/code/${encodeURIComponent(info.repoId)}`); return; }
         if (action === 'add-mr-comment') { addMrComment(id); return; }
         if (action === 'open-task') { openTaskDrawer(id); return; }
-        if (action === 'open-task-page') { openTaskPage(id, target.dataset.from || 'board'); return; }
+        if (action === 'open-task-page') { closeOverlay(); openTaskPage(id); return; }
         if (action === 'back-task') { backFromTask(); return; }
         if (action === 'interrupt-task-page') { interruptTaskPage(id); return; }
         if (action === 'rerun-task-page') { rerunTaskPage(id); return; }
@@ -4208,8 +4362,8 @@ func Next(state State, picked bool) State {
               state.iterationId = project.iterationId;
               state.reqTab = 'list';
               resetRequirementFilters();
+              resetDefectFilters();
               resetKnowledgeFilters();
-              state.taskFilter = 'all';
               state.pipelineFilter = 'all';
               state.membersPage = 1;
               state.docContext = null;
@@ -4254,13 +4408,18 @@ func Next(state State, picked bool) State {
       if (!target) return;
       const action = target.dataset.action;
       const id = target.dataset.id;
-      if (action === 'iteration-switch') { state.iterationId = target.value; resetRequirementFilters(); renderMain(); return; }
+      if (action === 'iteration-switch') { state.iterationId = target.value; resetRequirementFilters(); resetDefectFilters(); renderMain(); return; }
       if (action === 'req-status-filter') { state.reqStatusFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-priority-filter') { state.reqPriorityFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-owner-filter') { state.reqOwnerFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-app-filter') { state.reqAppFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-release-filter') { state.reqReleaseFilter = target.value; state.reqPage = 1; renderMain(); return; }
       if (action === 'req-release-select') { setRequirementRelease(id, target.value); return; }
+      if (action === 'defect-severity-filter') { state.defectSeverityFilter = target.value; state.defectPage = 1; renderMain(); return; }
+      if (action === 'defect-status-filter') { state.defectStatusFilter = target.value; state.defectPage = 1; renderMain(); return; }
+      if (action === 'defect-priority-filter') { state.defectPriorityFilter = target.value; state.defectPage = 1; renderMain(); return; }
+      if (action === 'defect-owner-filter') { state.defectOwnerFilter = target.value; state.defectPage = 1; renderMain(); return; }
+      if (action === 'defect-req-filter') { state.defectReqFilter = target.value; state.defectPage = 1; renderMain(); return; }
       if (action === 'doc-type-filter') { state.knowledgeType = target.value; renderMain(); return; }
       if (action === 'doc-req-filter') { state.knowledgeReq = target.value; renderMain(); return; }
       if (action === 'doc-source-filter') { state.knowledgeSource = target.value; renderMain(); return; }
@@ -4285,6 +4444,9 @@ func Next(state State, picked bool) State {
       if (id === 'req-id-filter') { state.reqIdFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-id-filter'); return; }
       if (id === 'req-title-filter') { state.reqTitleFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-title-filter'); return; }
       if (id === 'req-updated-filter') { state.reqUpdatedFilter = event.target.value; state.reqPage = 1; rerenderPreserve('req-updated-filter'); return; }
+      if (id === 'defect-id-filter') { state.defectIdFilter = event.target.value; state.defectPage = 1; rerenderPreserve('defect-id-filter'); return; }
+      if (id === 'defect-title-filter') { state.defectTitleFilter = event.target.value; state.defectPage = 1; rerenderPreserve('defect-title-filter'); return; }
+      if (id === 'defect-updated-filter') { state.defectUpdatedFilter = event.target.value; state.defectPage = 1; rerenderPreserve('defect-updated-filter'); return; }
       if (id === 'doc-search') {
         state.knowledgeSearch = event.target.value;
         if (event.isComposing || docSearchPointerDown) return;
@@ -4326,6 +4488,8 @@ func Next(state State, picked bool) State {
       if (type === 'new-project') submitProject(form);
       else if (type === 'add-member') submitMember(form);
       else if (type === 'new-requirement') submitRequirement(form);
+      else if (type === 'new-defect') submitDefect(form);
+      else if (type === 'save-defect') saveDefectEdit(form);
       else if (type === 'defer-req') submitDefer(form);
       else if (type === 'new-task') submitTask(form);
       else if (type === 'new-release') submitRelease(form);
@@ -4422,7 +4586,7 @@ func Next(state State, picked bool) State {
       navigate('#/requirements');
     } else if (type === 'task') {
       const task = taskById(id);
-      if (task) openTaskPage(task.id, 'agents');
+      if (task) openTaskPage(task.id);
     } else if (type === 'capability') {
       state.pendingCapId = id;
       navigate('#/capabilities');
@@ -4447,8 +4611,8 @@ func Next(state State, picked bool) State {
     state.iterationId = project.iterationId;
     state.reqTab = 'list';
     resetRequirementFilters();
+    resetDefectFilters();
     resetKnowledgeFilters();
-    state.taskFilter = 'all';
     state.pipelineFilter = 'all';
     state.membersPage = 1;
     closeOverlay();
@@ -4465,6 +4629,7 @@ func Next(state State, picked bool) State {
     state.iterationId = project.iterationId;
     state.reqTab = 'list';
     resetRequirementFilters();
+    resetDefectFilters();
     resetKnowledgeFilters();
     state.membersPage = 1;
     navigate('#/requirements');
@@ -4475,10 +4640,11 @@ func Next(state State, picked bool) State {
     if (!project) return;
     const iterationCount = ITERATIONS.filter((item) => item.projectId === id).length;
     const requirementCount = REQUIREMENTS.filter((item) => item.projectId === id).length;
+    const defectCount = DEFECTS.filter((item) => item.projectId === id).length;
     const repoCount = REPOS.filter((item) => item.projectId === id).length;
     openPanel({
       title: '释放项目', sub: `${esc(project.name)} · ${esc(project.code)}`, variant: 'modal',
-      body: `<div class="release-note"><b>释放后项目将被删除，且无法恢复。</b><br>将同时清理 ${iterationCount} 个迭代、${requirementCount} 条需求、${repoCount} 个代码仓，以及关联的 Agent 任务、应用、流水线与发布排期。</div>`,
+      body: `<div class="release-note"><b>释放后项目将被删除，且无法恢复。</b><br>将同时清理 ${iterationCount} 个迭代、${requirementCount} 条需求、${defectCount} 条缺陷、${repoCount} 个代码仓，以及关联的 Agent 任务、应用、流水线与发布排期。</div>`,
       footer: `<button class="btn btn-outline" type="button" data-action="close-overlay">取消</button><button class="btn btn-danger" type="button" data-action="confirm-release-project" data-id="${project.id}">确认释放</button>`
     });
   }
@@ -4497,6 +4663,7 @@ func Next(state State, picked bool) State {
     purge(PROJECTS, (item) => item.id === projectId);
     purge(ITERATIONS, (item) => item.projectId === projectId);
     purge(REQUIREMENTS, (item) => item.projectId === projectId);
+    purge(DEFECTS, (item) => item.projectId === projectId);
     REQUIREMENTS.forEach((item) => { if (iterationIds.has(item.deferredTo)) item.deferredTo = 'backlog'; });
     purge(REQUIREMENT_COMMENTS, (item) => requirementIds.has(item.requirementId));
     purge(REQUIREMENT_HISTORY, (item) => requirementIds.has(item.requirementId));
@@ -4528,6 +4695,7 @@ func Next(state State, picked bool) State {
       state.projectId = next ? next.id : null;
       state.iterationId = next ? next.iterationId : null;
       resetRequirementFilters();
+      resetDefectFilters();
       resetKnowledgeFilters();
       state.membersPage = 1;
     }
@@ -4786,8 +4954,8 @@ func Next(state State, picked bool) State {
     state.iterationId = iterationId;
     state.reqTab = 'list';
     resetRequirementFilters();
+    resetDefectFilters();
     resetKnowledgeFilters();
-    state.taskFilter = 'all';
     state.pipelineFilter = 'all';
     state.membersPage = 1;
     closeOverlay();
@@ -4845,6 +5013,104 @@ func Next(state State, picked bool) State {
     toast(`${user.name} 已从 ${project.name} 移除。`, 'success', '成员已移除');
   }
 
+  function submitDefect(form) {
+    const data = new FormData(form);
+    const title = String(data.get('title') || '').trim();
+    const severity = String(data.get('severity') || '严重');
+    const priority = String(data.get('priority') || 'P1');
+    const owner = String(data.get('owner') || '').trim();
+    const requirementId = String(data.get('requirementId') || '');
+    const desc = String(data.get('desc') || '').trim();
+    const project = currentProject();
+    const iteration = currentIteration();
+    if (!title) { toast('请填写缺陷标题。', 'warning'); return; }
+    if (!['致命', '严重', '一般', '轻微'].includes(severity)) { toast('请选择有效的严重程度。', 'warning'); return; }
+    if (!['P0', 'P1', 'P2', 'P3'].includes(priority)) { toast('请选择有效的优先级。', 'warning'); return; }
+    if (!owner) { toast('请选择责任人。', 'warning'); return; }
+    if (!desc) { toast('请填写缺陷描述或复现步骤。', 'warning'); return; }
+    if (requirementId) {
+      const req = requirementById(requirementId);
+      if (!req || req.projectId !== project.id) { toast('关联需求不属于当前项目。', 'warning'); return; }
+    }
+    const defect = {
+      id: `BUG-${++state.defectSeq}`, title, projectId: project.id, iterationId: iteration.id,
+      requirementId: requirementId || null, severity, priority, status: '待处理', owner, reporter: '张明',
+      updated: nowTime(), createdAt: `${nowDate()} ${nowTime()}`, taskId: null, desc
+    };
+    DEFECTS.unshift(defect);
+    audit('创建缺陷', defect.id, '成功', { after: { title, severity, priority, owner, requirementId: defect.requirementId } });
+    closeOverlay();
+    state.projectId = project.id;
+    state.iterationId = iteration.id;
+    state.reqTab = 'defects';
+    resetDefectFilters();
+    navigate('#/requirements');
+    renderMain();
+    toast(`${defect.id} 已创建，等待分派处理。`, 'success', '缺陷已创建');
+  }
+
+  function saveDefectEdit(form) {
+    const data = new FormData(form);
+    const id = String(data.get('id') || '');
+    const defect = defectById(id);
+    if (!defect) return;
+    const title = String(data.get('title') || '').trim();
+    const desc = String(data.get('desc') || '').trim();
+    const status = String(data.get('status') || '');
+    const severity = String(data.get('severity') || '');
+    const priority = String(data.get('priority') || '');
+    const owner = String(data.get('owner') || '').trim();
+    const requirementId = String(data.get('requirementId') || '');
+    if (!title) { toast('请填写缺陷标题。', 'warning'); return; }
+    if (!desc) { toast('请填写缺陷描述或复现步骤。', 'warning'); return; }
+    if (!['待处理', '处理中', '待验证', '已关闭'].includes(status)) { toast('请选择有效的缺陷状态。', 'warning'); return; }
+    if (!['致命', '严重', '一般', '轻微'].includes(severity)) { toast('请选择有效的严重程度。', 'warning'); return; }
+    if (!['P0', 'P1', 'P2', 'P3'].includes(priority)) { toast('请选择有效的优先级。', 'warning'); return; }
+    if (!owner) { toast('请选择责任人。', 'warning'); return; }
+    if (requirementId) {
+      const req = requirementById(requirementId);
+      if (!req || req.projectId !== defect.projectId) { toast('关联需求不属于当前项目。', 'warning'); return; }
+    }
+    const before = { title: defect.title, desc: defect.desc, status: defect.status, severity: defect.severity, priority: defect.priority, owner: defect.owner, requirementId: defect.requirementId };
+    const after = { title, desc, status, severity, priority, owner, requirementId: requirementId || null };
+    if (Object.keys(after).every((key) => after[key] === before[key])) {
+      toast('没有需要保存的修改。', 'info');
+      return;
+    }
+    Object.assign(defect, after, { updated: nowTime() });
+    const linkedTask = defect.taskId ? taskById(defect.taskId) : null;
+    if (linkedTask) {
+      linkedTask.requirementId = after.requirementId;
+      linkedTask.owner = owner;
+    }
+    audit('更新缺陷', defect.id, '成功', { before, after });
+    renderMain();
+    openDefectDrawer(defect.id);
+    toast(`${defect.id} 已更新。`, 'success', '缺陷已更新');
+  }
+
+  function assignDefectAgent(id) {
+    const defect = defectById(id);
+    if (!defect) return;
+    if (defect.taskId && taskById(defect.taskId)) { closeOverlay(); openTaskPage(defect.taskId); return; }
+    const time = nowTime();
+    const task = {
+      id: `T-${++state.taskSeq}`, title: `缺陷修复 · ${defect.title}`, agent: 'Coding', type: '缺陷修复',
+      projectId: defect.projectId, requirementId: defect.requirementId || null, defectId: defect.id,
+      owner: defect.owner, status: '排队中', progress: 0, started: '—', duration: '—', tokens: '0', steps: 0, updated: time,
+      summary: `缺陷 ${defect.id}：${defect.desc}`, tools: [],
+      logs: `[${time}] task created from defect ${defect.id}\n[${time}] waiting for agent worker`, diff: null
+    };
+    TASKS.unshift(task);
+    defect.taskId = task.id;
+    if (defect.status !== '处理中') defect.status = '处理中';
+    defect.updated = nowTime();
+    audit('创建缺陷修复任务', task.id, '成功', { defectId: defect.id, projectId: defect.projectId, agent: 'Coding' });
+    renderMain();
+    openDefectDrawer(defect.id);
+    toast(`${task.id} 已创建并进入 Agent 队列。`, 'success', '已交给 Agent 修复');
+  }
+
   function submitRequirement(form) {
     const data = new FormData(form);
     const title = String(data.get('title') || '').trim();
@@ -4872,6 +5138,7 @@ func Next(state State, picked bool) State {
     state.iterationId = iterationId;
     state.reqTab = 'list';
     resetRequirementFilters();
+    resetDefectFilters();
     navigate('#/requirements');
     renderMain();
     toast(`${req.id} 已创建，等待需求分析。`, 'success', '需求已创建');
@@ -5005,7 +5272,6 @@ func Next(state State, picked bool) State {
     audit('创建 Agent 任务', task.id, '成功', { agent, projectId });
     closeOverlay();
     state.projectId = projectId;
-    state.taskFilter = 'all';
     navigate('#/agents');
     renderMain();
     toast(`${task.id} 已进入队列。`, 'success', '任务已创建');
