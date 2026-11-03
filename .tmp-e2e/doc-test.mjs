@@ -281,6 +281,13 @@ try {
   check('sidebar navigation guards unsaved changes', (await evaluate(`location.hash === '#/knowledge/doc-1/edit'`)) === true);
   await evaluate(`document.querySelector('[data-action="continue-doc-edit"]').click()`);
   await waitDom(`!document.querySelector('.overlay.open') && !!document.querySelector('#doc-edit-form')`);
+  await evaluate(`document.querySelector('[data-action="project-switch"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open .project-option[data-id="p-customer"]')`);
+  await evaluate(`document.querySelector('.overlay.open .project-option[data-id="p-customer"]').click()`);
+  await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-doc-discard"]')`);
+  check('project switch guards unsaved changes', (await evaluate(`location.hash === '#/knowledge/doc-1/edit' && document.querySelector('.sidebar .project-meta b')?.textContent === '订单中心'`)) === true);
+  await evaluate(`document.querySelector('[data-action="continue-doc-edit"]').click()`);
+  await waitDom(`!document.querySelector('.overlay.open') && !!document.querySelector('#doc-edit-form')`);
   await evaluate(`history.back()`);
   await waitDom(`!!document.querySelector('.overlay.open [data-action="confirm-doc-discard"]')`);
   check('browser back guards unsaved changes', (await evaluate(`location.hash === '#/knowledge/doc-1/edit'`)) === true);

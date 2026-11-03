@@ -4321,6 +4321,11 @@ func Next(state State, picked bool) State {
   function switchProject(id) {
     const project = projectById(id);
     if (!project) return;
+    if (docEditDirty()) {
+      const info = docRouteInfo();
+      openDocDiscardModal(info ? `#/knowledge/${info.docId}` : '#/projects');
+      return;
+    }
     state.projectId = id;
     state.iterationId = project.iterationId;
     state.reqTab = 'list';
