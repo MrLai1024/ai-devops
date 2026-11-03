@@ -1387,6 +1387,7 @@ func Next(state State, picked bool) State {
     env: 'prod',
     timeRange: '7d',
     reqTab: 'list',
+    agentTab: 'board',
     reqPage: 1,
     reqIdFilter: '',
     reqTitleFilter: '',
@@ -2216,9 +2217,15 @@ func Next(state State, picked bool) State {
   /* ---------------- pages: agents ---------------- */
   function renderAgents() {
     const tasks = projectTasks(state.projectId);
+    const tabs = [{ id: 'board', label: '任务看板', count: tasks.length }];
+    const activeTab = tabs.some((tab) => tab.id === state.agentTab) ? state.agentTab : 'board';
+    state.agentTab = activeTab;
     return `<div class="agents-page">
       ${pageHead('Agent 任务', `项目：${esc(currentProject().name)} · ${tasks.length} 个执行任务 · 按执行状态分组`, `<button class="btn btn-primary" type="button" data-action="new-task">${icon('plus', 14)} 新建任务</button>`)}
-      ${agentTaskBoardView()}
+      <div class="tabs agent-tabs">
+        ${tabs.map((tab) => `<button class="tab ${activeTab === tab.id ? 'active' : ''}" type="button" data-action="agent-tab" data-tab="${tab.id}">${tab.label}${tab.count == null ? '' : `<span class="tab-count">${tab.count}</span>`}</button>`).join('')}
+      </div>
+      ${activeTab === 'board' ? agentTaskBoardView() : ''}
     </div>`;
   }
 
@@ -4299,6 +4306,7 @@ func Next(state State, picked bool) State {
         if (action === 'new-release') { openReleaseForm(); return; }
         if (action === 'open-release') { openReleaseDrawer(id); return; }
         if (action === 'req-tab') { state.reqTab = target.dataset.tab; if (taskIdFromRoute()) { navigate('#/requirements'); return; } renderMain(); return; }
+        if (action === 'agent-tab') { state.agentTab = target.dataset.tab; renderMain(); return; }
         if (action === 'req-page') { state.reqPage = Number(target.dataset.page) || 1; renderMain(); return; }
         if (action === 'reset-req-filters') { resetRequirementFilters(); renderMain(); return; }
         if (action === 'defect-page') { state.defectPage = Number(target.dataset.page) || 1; renderMain(); return; }

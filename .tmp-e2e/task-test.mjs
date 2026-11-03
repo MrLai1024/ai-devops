@@ -71,6 +71,8 @@ try {
 
   await evaluate(`document.querySelector('.sidebar [data-action="nav"][data-route="#/agents"]').click()`);
   await waitDom(`location.hash === '#/agents' && !!document.querySelector('.task-kanban')`);
+  const agentTabs = await evaluate(`Array.from(document.querySelectorAll('.agents-page > .tabs .tab')).map((el) => ({ tab: el.dataset.tab, text: el.textContent.trim(), active: el.classList.contains('active') }))`);
+  check('agent page presents the board in a tab', agentTabs.length === 1 && agentTabs[0].tab === 'board' && agentTabs[0].text.startsWith('任务看板') && agentTabs[0].active, JSON.stringify(agentTabs));
   const boardHeads = await evaluate(`Array.from(document.querySelectorAll('.task-kanban .kanban-head b')).map((el) => el.textContent.trim())`);
   check('task board columns are by status', JSON.stringify(boardHeads) === JSON.stringify(['排队中', '运行中', '待确认', '已完成', '失败']), boardHeads.join(','));
   check('task board has task cards', (await evaluate(`document.querySelectorAll('[data-action="open-task-page"]').length`)) >= 5);
