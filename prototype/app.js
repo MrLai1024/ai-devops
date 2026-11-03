@@ -187,6 +187,7 @@
     input.setRangeText(nextBlock, lineStart, lineEnd, 'end');
     input.focus();
     input.setSelectionRange(lineStart, lineStart + nextBlock.length);
+    state.docForceSnapshot = true;
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
@@ -205,6 +206,7 @@
     const caret = placeholder ? templateStart + template.indexOf(placeholder) : templateStart + template.length;
     input.focus();
     input.setSelectionRange(caret, caret + (placeholder ? placeholder.length : 0));
+    state.docForceSnapshot = true;
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
@@ -226,6 +228,7 @@
       input.setRangeText(`${before}${text}${after}`, start, end, 'end');
       input.focus();
       input.setSelectionRange(start + before.length, start + before.length + text.length);
+      state.docForceSnapshot = true;
       input.dispatchEvent(new Event('input', { bubbles: true }));
     };
     if (format === 'bold') { insert('**', '**', '加粗文本'); return; }
@@ -235,7 +238,7 @@
     if (format === 'link') { insert('[', '](https://)', '链接文本'); return; }
   }
 
-  function pushDocHistory(value, start, end) {
+  function pushDocHistory(value, start, end, force = false) {
     const now = Date.now();
     const last = state.docHistory[state.docHistory.length - 1];
     if (last && last.value === value) {
@@ -243,7 +246,7 @@
       last.end = end;
       return;
     }
-    if (last && state.docHistory.length > 1 && now - (last.at || 0) < 500) {
+    if (!force && last && state.docHistory.length > 1 && now - (last.at || 0) < 500) {
       last.value = value;
       last.start = start;
       last.end = end;
@@ -1368,6 +1371,7 @@ func Next(state State, picked bool) State {
     docHistory: [],
     docRedo: [],
     docPreviewTimer: null,
+    docForceSnapshot: false,
     docSaving: false,
     docSaveTimer: null,
     pendingDocRoute: null,
@@ -2700,6 +2704,7 @@ func Next(state State, picked bool) State {
     state.docBaseline = { title: doc.title, type: doc.type, requirementId: doc.requirementId || '', content: doc.content };
     state.docHistory = [{ value: doc.content, start: 0, end: 0, at: Date.now() }];
     state.docRedo = [];
+    state.docForceSnapshot = false;
     state.pendingDocRoute = null;
     const toolbar = [
       ['h1', 'H1'], ['h2', 'H2'], ['bold', 'B'], ['italic', 'I'], ['strike', 'S'],
@@ -4180,7 +4185,10 @@ func Next(state State, picked bool) State {
       }
       if (id === 'doc-content-input') {
         const value = event.target.value;
-        if (!event.isComposing) pushDocHistory(value, event.target.selectionStart, event.target.selectionEnd);
+        if (!event.isComposing) {
+          pushDocHistory(value, event.target.selectionStart, event.target.selectionEnd, state.docForceSnapshot);
+          state.docForceSnapshot = false;
+        }
         if (state.docPreviewTimer) clearTimeout(state.docPreviewTimer);
         state.docPreviewTimer = setTimeout(() => {
           state.docPreviewTimer = null;

@@ -244,6 +244,12 @@ try {
   await sleep(120);
   check('ctrl+z uses the editor history', (await evaluate(`document.querySelector('#doc-content-input')?.value === 'first line\\nsecond line'`)) === true);
 
+  await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = 'alpha'; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); input.setSelectionRange(5, 5); document.querySelector('[data-action="doc-format"][data-format="bold"]').click(); return true; })()`);
+  await sleep(120);
+  await evaluate(`document.querySelector('[data-action="doc-format"][data-format="undo"]').click()`);
+  await sleep(120);
+  check('toolbar changes get their own undo snapshot', (await evaluate(`document.querySelector('#doc-content-input')?.value === 'alpha'`)) === true);
+
   await evaluate(`(() => { const input = document.querySelector('#doc-content-input'); input.value = 'one\\ntwo\\nthree'; input.dispatchEvent(new Event('input', { bubbles: true })); input.focus(); input.setSelectionRange(0, input.value.length); return true; })()`);
   await sleep(120);
   await evaluate(`document.querySelector('[data-action="doc-format"][data-format="ul"]').click()`);
