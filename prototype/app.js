@@ -74,14 +74,14 @@
 
   function renderInlineMarkdown(text) {
     const codeSpans = [];
-    let html = esc(text).replace(/`([^`]+)`/g, (match, code) => {
+    let html = esc(String(text == null ? '' : text).replace(/\u0000/g, '')).replace(/`([^`]+)`/g, (match, code) => {
       codeSpans.push(code);
       return `\u0000${codeSpans.length - 1}\u0000`;
     });
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*\*((?:[^*]|\*(?!\*))+)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
     html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    html = html.replace(/\[([^\]]+)\]\(((?:https?:\/\/|\/(?!\/)|\.{1,2}\/|#)[^\s)]*)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
     return html.replace(/\u0000(\d+)\u0000/g, (match, index) => `<code>${codeSpans[Number(index)]}</code>`);
   }
 
@@ -127,14 +127,21 @@
         html.push(`<ol>${items.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join('')}</ol>`);
         continue;
       }
-      if (line.includes('|') && index + 1 < lines.length && /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(lines[index + 1])) {
+      if (line.includes('|') && index + 1 < lines.length) {
         const parseRow = (row) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
         const headers = parseRow(line);
-        index += 2;
-        const rows = [];
-        while (index < lines.length && lines[index].includes('|')) { rows.push(parseRow(lines[index])); index += 1; }
-        html.push(`<div class="doc-table-wrap"><table><thead><tr>${headers.map((cell) => `<th>${renderInlineMarkdown(cell)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
-        continue;
+        const delimiters = parseRow(lines[index + 1]);
+        if (delimiters.length === headers.length && delimiters.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+          index += 2;
+          const rows = [];
+          while (index < lines.length && lines[index].includes('|')) {
+            const cells = parseRow(lines[index]);
+            rows.push(headers.map((_, cellIndex) => cells[cellIndex] || ''));
+            index += 1;
+          }
+          html.push(`<div class="doc-table-wrap"><table><thead><tr>${headers.map((cell) => `<th>${renderInlineMarkdown(cell)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);
+          continue;
+        }
       }
       const paragraph = [line];
       index += 1;
@@ -1098,7 +1105,7 @@ func Next(state State, picked bool) State {
       id: 'doc-1', projectId: 'p-order', requirementId: 'RQ-112', title: '订单履约状态机说明', type: '方案设计',
       owner: '张明', status: '已索引', createdAt: '2026-10-10', updated: '10:12', updatedBy: '张明',
       published: false, publishedAt: null, publishedBy: null,
-      content: '# 订单履约状态机说明\n\n本文描述订单从创建到签收的状态流转、异常分支与补偿策略。\n\n## 状态\n- CREATED\n- PAID\n- PICKED\n- SHIPPED\n- DELIVERED\n- CANCELLED\n\n## 异常\n履约超时、承运商异常、仓库缺货统一进入 EXCEPTION 状态，由自动分派任务处理。\n\n```text\nCREATED -> PAID -> PICKED -> SHIPPED -> DELIVERED\n```\n\n| 状态 | 触发条件 | 后续动作 |\n| --- | --- | --- |\n| PAID | 支付成功 | 生成拣货任务 |\n| EXCEPTION | 超时或异常 | 自动分派 |'
+      content: '# 订单履约状态机说明\n\n本文描述订单从创建到签收的状态流转、异常分支与补偿策略。\n\n## 状态\n- CREATED\n- PAID\n- PICKED\n- SHIPPED\n- DELIVERED\n- CANCELLED\n\n**重点**：状态流转必须经过 `PAID`，*斜体*用于强调，~~旧流程已废弃~~。\n\n**粗体与*斜体*混排**：快捷键 <kbd>Ctrl</kbd> 查看 [运行手册](#/knowledge/doc-2)。\n\n## 异常\n履约超时、承运商异常、仓库缺货统一进入 EXCEPTION 状态，由自动分派任务处理。\n\n```text\nCREATED -> PAID -> PICKED -> SHIPPED -> DELIVERED\n```\n\n| 状态 | 触发条件 | 后续动作 |\n| --- | --- | --- |\n| PAID | 支付成功 | 生成拣货任务 |\n| EXCEPTION | 超时或异常 | 自动分派 |'
     },
     {
       id: 'doc-2', projectId: 'p-order', requirementId: 'RQ-101', title: '履约超时预警阈值配置', type: '运行手册',
@@ -1391,6 +1398,8 @@ func Next(state State, picked bool) State {
     return { scope: match[1] ? 'global' : 'project', docId, edit: !!match[3] };
   };
 
+  const isKnowledgeRoute = () => state.route === '#/knowledge' || state.route === '#/knowledge/' || state.route.startsWith('#/knowledge/');
+
   function syncDocProject() {
     const info = docRouteInfo();
     if (!info || info.scope === 'global') return null;
@@ -1417,7 +1426,7 @@ func Next(state State, picked bool) State {
     syncDocProject();
     const meta = taskIdFromRoute()
       ? ROUTES[state.taskReturn === 'agents' ? '#/agents' : '#/requirements']
-      : (repoRouteInfo() ? ROUTES['#/code'] : (docRouteInfo() ? ROUTES['#/knowledge'] : (ROUTES[state.route] || ROUTES['#/projects'])));
+      : (repoRouteInfo() ? ROUTES['#/code'] : (isKnowledgeRoute() ? ROUTES['#/knowledge'] : (ROUTES[state.route] || ROUTES['#/projects'])));
     const sidebar = $('#sidebar');
     const shell = $('#shell');
     if (meta.placeholder || meta.sidebar === 'none' || (meta.sidebar === 'project' && !PROJECTS.length)) {
@@ -1541,8 +1550,10 @@ func Next(state State, picked bool) State {
     if (!PROJECTS.length && meta.module === 'projects') return renderProjects();
     const repoInfo = repoRouteInfo();
     if (repoInfo) return repoInfo.mrNumber ? renderMrDetail(repoInfo.repoId, repoInfo.mrNumber) : renderRepoDetail(repoInfo.repoId);
+    if (state.route === '#/knowledge/') return renderKnowledge();
     const docInfo = docRouteInfo();
     if (docInfo) return renderDocRoute(docInfo);
+    if (state.route.startsWith('#/knowledge/')) return renderDocNotFound({ scope: state.route.startsWith('#/knowledge/global') ? 'global' : 'project' });
     const taskId = taskIdFromRoute();
     if (taskId) return state.taskReturn === 'agents' ? renderTaskDetail(taskId) : renderRequirements(taskId);
     switch (meta.page) {
@@ -2489,19 +2500,19 @@ func Next(state State, picked bool) State {
 
   function renderDocRoute(info) {
     const doc = docById(info.docId);
-    if (!doc) return renderDocNotFound();
-    if (info.scope === 'global' && !doc.published) return renderDocNotFound();
-    if (info.edit && (info.scope === 'global' || doc.projectId !== state.projectId)) return renderDocNotFound();
-    if (info.scope === 'project' && doc.projectId !== state.projectId) return renderDocNotFound();
+    if (!doc) return renderDocNotFound(info);
+    if (info.scope === 'global' && !doc.published) return renderDocNotFound(info);
+    if (info.edit && (info.scope === 'global' || doc.projectId !== state.projectId)) return renderDocNotFound(info);
+    if (info.scope === 'project' && doc.projectId !== state.projectId) return renderDocNotFound(info);
     return info.edit ? renderDocEditor(doc, info) : renderDocPreview(doc, info);
   }
 
-  function renderDocNotFound() {
+  function renderDocNotFound(info) {
     return `<div class="empty">
       <div class="empty-icon">${icon('file', 30)}</div>
       <h2>文档不存在或无权访问</h2>
       <p>该文档可能已取消发布，或不属于当前项目。</p>
-      <button class="btn btn-primary" type="button" data-action="back-to-knowledge" data-tab="project">返回知识库</button>
+      <button class="btn btn-primary" type="button" data-action="back-to-knowledge" data-tab="${info?.scope === 'global' ? 'global' : 'project'}">返回知识库</button>
     </div>`;
   }
 

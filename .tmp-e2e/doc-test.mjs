@@ -141,6 +141,21 @@ try {
   await waitDom(`location.hash === '#/knowledge/doc-1' && !!document.querySelector('.doc-page')`);
   check('doc row opens preview page', (await evaluate(`document.querySelector('.doc-title')?.textContent.trim() === '订单履约状态机说明'`)) === true);
   check('preview renders markdown', (await evaluate(`(() => { const content = document.querySelector('.doc-content'); return !!content && !!content.querySelector('h1') && !!content.querySelector('ul') && !!content.querySelector('pre code') && !!content.querySelector('table'); })()`)) === true);
+  check('preview renders document body text', (await evaluate(`(() => { const text = document.querySelector('.doc-content')?.innerText || ''; return text.includes('CREATED') && text.includes('支付成功') && text.includes('EXCEPTION'); })()`)) === true);
+  check('preview renders inline markdown and escapes html', (await evaluate(`(() => {
+    const content = document.querySelector('.doc-content');
+    if (!content) return false;
+    const nested = content.querySelector('strong em');
+    const link = content.querySelector('a');
+    const inlineCode = Array.from(content.querySelectorAll('code')).some((code) => code.textContent === 'PAID');
+    return !!content.querySelector('strong')?.textContent.includes('重点') &&
+      Array.from(content.querySelectorAll('em')).some((em) => em.textContent === '斜体') &&
+      !!content.querySelector('del') && content.querySelector('del').textContent === '旧流程已废弃' &&
+      !!nested && nested.textContent === '斜体' &&
+      !!link && link.getAttribute('href') === '#/knowledge/doc-2' &&
+      content.innerHTML.includes('&lt;kbd&gt;') && !content.querySelector('kbd') &&
+      inlineCode;
+  })()`)) === true);
   check('preview shows metadata and linked requirement', (await evaluate(`(() => { const page = document.querySelector('.doc-page'); return page.innerText.includes('doc-1') && page.innerText.includes('张明') && page.innerText.includes('RQ-112') && page.innerText.includes('仅本项目'); })()`)) === true);
   await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
   await waitDom(`location.hash === '#/knowledge' && document.querySelectorAll('#main tbody tr[data-id]').length === 3`);
@@ -162,7 +177,15 @@ try {
   await waitDom(`!!document.querySelector('.empty h2') && document.querySelector('.empty h2').innerText.includes('文档不存在')`);
   check('unpublished doc is not available in global library', true);
   await evaluate(`document.querySelector('[data-action="back-to-knowledge"]').click()`);
-  await waitDom(`location.hash === '#/knowledge'`);
+  await waitDom(`location.hash === '#/knowledge' && document.querySelector('[data-action="knowledge-tab"][data-tab="global"]')?.classList.contains('active') && document.querySelectorAll('#main tbody tr[data-id]').length === 2`);
+
+  await evaluate(`location.hash = '#/knowledge/'`);
+  await waitDom(`document.querySelector('.page-title')?.textContent.trim() === '知识库' && document.querySelectorAll('.knowledge-page .tab').length === 2`);
+  check('knowledge trailing slash renders the list', (await evaluate(`document.querySelector('.sidebar .side-item.active')?.textContent.includes('知识库')`)) === true);
+
+  await evaluate(`location.hash = '#/knowledge/%E0%A4%A'`);
+  await waitDom(`document.querySelector('.empty h2')?.innerText.includes('文档不存在')`);
+  check('malformed knowledge url renders not-found', true);
 
   check('no console errors', errors.length === 0, errors.join(' | '));
 } catch (error) {
