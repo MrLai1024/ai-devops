@@ -173,8 +173,23 @@
     const block = value.slice(lineStart, lineEnd);
     const lines = block.split('\n');
     const active = lines.filter((line) => line.trim());
-    if (!active.length) return;
     const prefixes = { h1: '# ', h2: '## ', ul: '- ', ol: '1. ', quote: '> ' };
+    const placeholders = { h1: '标题', h2: '标题', ul: '列表项', ol: '列表项', quote: '引用' };
+    if (!active.length) {
+      const placeholder = placeholders[format] || '内容';
+      const nextBlock = lines.map((line) => (line.trim() ? line : `${prefixes[format]}${placeholder}`)).join('\n');
+      input.setRangeText(nextBlock, lineStart, lineEnd, 'end');
+      input.focus();
+      if (lines.length === 1) {
+        const selectionStart = lineStart + prefixes[format].length;
+        input.setSelectionRange(selectionStart, selectionStart + placeholder.length);
+      } else {
+        input.setSelectionRange(lineStart, lineStart + nextBlock.length);
+      }
+      state.docForceSnapshot = true;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     const blockMarker = /^(?:#{1,6}\s+|[-*]\s+|\d+\.\s+|>\s?)/;
     const listMarkers = { ul: /^[-*]\s+/, ol: /^\d+\.\s+/ };
     const toggle = !!listMarkers[format] && active.every((line) => listMarkers[format].test(line));
@@ -196,6 +211,21 @@
     if (!input) return;
     const value = input.value;
     const start = input.selectionStart;
+    if (input.selectionEnd > start && template.startsWith('```')) {
+      const { lineStart, lineEnd } = docLineRange(value, input.selectionStart, input.selectionEnd);
+      const content = value.slice(lineStart, lineEnd);
+      const before = value.slice(0, lineStart);
+      const following = value.slice(lineEnd);
+      const prefix = before ? (before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n') : '';
+      const suffix = following ? (following.startsWith('\n\n') ? '' : following.startsWith('\n') ? '\n' : '\n\n') : '';
+      input.setRangeText(`${prefix}\`\`\`\n${content}\n\`\`\`${suffix}`, lineStart, lineEnd, 'end');
+      const contentStart = lineStart + prefix.length + 4;
+      input.focus();
+      input.setSelectionRange(contentStart, contentStart + content.length);
+      state.docForceSnapshot = true;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     const lineStart = value.lastIndexOf('\n', start - 1) + 1;
     const before = value.slice(0, lineStart);
     const following = value.slice(lineStart);
@@ -1372,9 +1402,10 @@ func Next(state State, picked bool) State {
     docRedo: [],
     docPreviewTimer: null,
     docForceSnapshot: false,
-    docSaving: false,
-    docSaveTimer: null,
+    docSaveTimers: {},
     pendingDocRoute: null,
+    pendingProjectSwitch: null,
+    docContext: null,
     docLeaveApproved: false,
     membersPage: 1,
     capSearch: '',
@@ -2701,6 +2732,7 @@ func Next(state State, picked bool) State {
       clearTimeout(state.docPreviewTimer);
       state.docPreviewTimer = null;
     }
+    state.docContext = { projectId: doc.projectId, iterationId: projectById(doc.projectId)?.iterationId || state.iterationId, reqTab: state.reqTab, taskReturn: state.taskReturn };
     state.docBaseline = { title: doc.title, type: doc.type, requirementId: doc.requirementId || '', content: doc.content };
     state.docHistory = [{ value: doc.content, start: 0, end: 0, at: Date.now() }];
     state.docRedo = [];
@@ -3283,7 +3315,10 @@ func Next(state State, picked bool) State {
     overlay.innerHTML = '';
     overlay.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('no-scroll');
+    const guardPending = !!(state.pendingDocRoute || state.pendingProjectSwitch);
     state.pendingDocRoute = null;
+    state.pendingProjectSwitch = null;
+    if (guardPending && docRouteInfo()?.edit) restoreDocEditContext();
   }
 
   function toast(message, type = 'success', title = '') {
@@ -4104,12 +4139,31 @@ func Next(state State, picked bool) State {
         if (action === 'doc-format') { applyDocFormat(target.dataset.format); return; }
         if (action === 'cancel-doc-edit') { cancelDocEdit(id); return; }
         if (action === 'back-doc-preview') { cancelDocEdit(id); return; }
-        if (action === 'continue-doc-edit') { state.pendingDocRoute = null; closeOverlay(); return; }
+        if (action === 'continue-doc-edit') { closeOverlay(); return; }
         if (action === 'confirm-doc-discard') {
           const targetRoute = state.pendingDocRoute || `#/knowledge/${id}`;
+          const pendingProject = state.pendingProjectSwitch;
           state.pendingDocRoute = null;
+          state.pendingProjectSwitch = null;
           state.docLeaveApproved = true;
           closeOverlay();
+          if (pendingProject) {
+            const project = projectById(pendingProject);
+            if (project) {
+              state.projectId = project.id;
+              state.iterationId = project.iterationId;
+              state.reqTab = 'list';
+              resetRequirementFilters();
+              resetKnowledgeFilters();
+              state.taskFilter = 'all';
+              state.pipelineFilter = 'all';
+              state.membersPage = 1;
+              state.docContext = null;
+              toast(`已切换到 ${project.name}。`, 'info');
+              navigate('#/requirements', { force: true });
+              return;
+            }
+          }
           navigate(targetRoute, { force: true });
           return;
         }
@@ -4330,8 +4384,8 @@ func Next(state State, picked bool) State {
     const project = projectById(id);
     if (!project) return;
     if (docEditDirty()) {
-      const info = docRouteInfo();
-      openDocDiscardModal(info ? `#/knowledge/${info.docId}` : '#/projects');
+      state.pendingProjectSwitch = id;
+      openDocDiscardModal('#/projects');
       return;
     }
     state.projectId = id;
@@ -4955,8 +5009,7 @@ func Next(state State, picked bool) State {
     const content = String(data.get('content') || '');
     if (!title) { toast('请填写文档标题。', 'warning'); return; }
     if (requirementId && !REQUIREMENTS.some((item) => item.id === requirementId && item.projectId === doc.projectId)) { toast('关联需求不属于当前项目。', 'warning'); return; }
-    if (state.docSaving) { toast('文档正在保存，请稍候。', 'info'); return; }
-    state.docSaving = true;
+    if (state.docSaveTimers[doc.id]) { toast('文档正在保存，请稍候。', 'info'); return; }
     doc.title = title;
     doc.type = docTypeOptions.includes(type) ? type : doc.type;
     doc.requirementId = requirementId || null;
@@ -4966,19 +5019,31 @@ func Next(state State, picked bool) State {
     doc.status = '索引中';
     state.docBaseline = { title: doc.title, type: doc.type, requirementId: doc.requirementId || '', content: doc.content };
     audit('更新文档', doc.id, '成功', { after: { title: doc.title, type: doc.type, requirementId: doc.requirementId } });
-    if (state.docSaveTimer) clearTimeout(state.docSaveTimer);
     const timerId = setTimeout(() => {
-      if (state.docSaveTimer !== timerId) return;
-      state.docSaveTimer = null;
-      state.docSaving = false;
+      if (state.docSaveTimers[doc.id] !== timerId) return;
+      delete state.docSaveTimers[doc.id];
       const target = docById(doc.id);
       if (!target) return;
       target.status = '已索引';
       if (state.route === `#/knowledge/${doc.id}`) renderMain();
     }, 1200);
-    state.docSaveTimer = timerId;
+    state.docSaveTimers[doc.id] = timerId;
     navigate(`#/knowledge/${doc.id}`, { force: true });
     toast('文档已保存，正在重新索引。', 'success', '文档已保存');
+  }
+
+  function restoreDocEditContext() {
+    const context = state.docContext;
+    if (context) {
+      state.projectId = context.projectId;
+      state.iterationId = context.iterationId;
+      state.reqTab = context.reqTab;
+      state.taskReturn = context.taskReturn;
+    }
+    state.pendingReqId = null;
+    state.pendingTaskId = null;
+    state.pendingCapId = null;
+    state.pendingAppId = null;
   }
 
   function docEditDirty() {
